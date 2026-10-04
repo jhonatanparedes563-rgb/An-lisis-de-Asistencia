@@ -1,0 +1,6 @@
+{
+  "name": "CAMPOSOL ANALYTICS | Asistencia y Programación",
+  "description": "Plataforma empresarial de analítica de asistencia, programación laboral y transporte de personal para operaciones agrícolas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
