@@ -49,6 +49,8 @@ export function getISOWeekInfo(dateStr: string): { id: string; weekNumber: numbe
  */
 export function extractAvailableWeeks(days: DayEvolutionStat[]): WeekOption[] {
   const weekMap = new Map<string, { weekNumber: number; dates: string[] }>();
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const currentWeekInfo = getISOWeekInfo(todayStr);
 
   days.forEach((d) => {
     const { id, weekNumber } = getISOWeekInfo(d.date);
@@ -65,16 +67,36 @@ export function extractAvailableWeeks(days: DayEvolutionStat[]): WeekOption[] {
     const lastParts = sortedDates[sortedDates.length - 1].split('-');
     const firstFmt = firstParts.length === 3 ? `${firstParts[2]}/${firstParts[1]}` : sortedDates[0];
     const lastFmt = lastParts.length === 3 ? `${lastParts[2]}/${lastParts[1]}` : sortedDates[sortedDates.length - 1];
+    const isCurrent = id === currentWeekInfo.id;
 
     result.push({
       id,
       weekNumber: val.weekNumber,
-      label: `Semana ${val.weekNumber} (${firstFmt} – ${lastFmt})`,
+      label: `Semana ${val.weekNumber} (${firstFmt} – ${lastFmt})${isCurrent ? ' · Semana Actual' : ''}`,
       dates: sortedDates,
     });
   });
 
   return result.sort((a, b) => a.id.localeCompare(b.id));
+}
+
+/**
+ * Returns the current calendar week if present in weeks, otherwise returns the most recent (latest) week loaded.
+ */
+export function getCurrentOrLatestWeek(weeks: WeekOption[]): string {
+  if (weeks.length === 0) return 'all';
+
+  // 1. Check current calendar week
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const currentWeekInfo = getISOWeekInfo(todayStr);
+  const matchingCurrentWeek = weeks.find((w) => w.id === currentWeekInfo.id);
+  if (matchingCurrentWeek) {
+    return matchingCurrentWeek.id;
+  }
+
+  // 2. Fallback to the latest week in the dataset
+  const lastWeek = weeks[weeks.length - 1];
+  return lastWeek ? lastWeek.id : 'all';
 }
 
 /**
