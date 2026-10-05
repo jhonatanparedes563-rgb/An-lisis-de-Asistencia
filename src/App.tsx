@@ -35,11 +35,26 @@ import * as XLSX from 'xlsx';
 export function App() {
   const [batches, setBatches] = useState<DayAttendanceBatch[]>([]);
   const [rawRowsByDate, setRawRowsByDate] = useState<Record<string, RawWorkerRow[]>>({});
-  const [activeTab, setActiveTab] = useState<ActiveTab>('resumen');
+  const [activeTab, setActiveTab] = useState<ActiveTab>(() => {
+    return (localStorage.getItem('attendance_active_tab') as ActiveTab) || 'resumen';
+  });
   const [selectedWorker, setSelectedWorker] = useState<WorkerAttendanceSummary | null>(null);
-  const [selectedGroupColumn, setSelectedGroupColumn] = useState<string>('');
+  const [selectedGroupColumn, setSelectedGroupColumn] = useState<string>(() => {
+    return localStorage.getItem('attendance_group_col') || '';
+  });
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isLoadedFromStorage, setIsLoadedFromStorage] = useState(false);
+
+  // Sync activeTab & group column to localStorage
+  useEffect(() => {
+    localStorage.setItem('attendance_active_tab', activeTab);
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (selectedGroupColumn) {
+      localStorage.setItem('attendance_group_col', selectedGroupColumn);
+    }
+  }, [selectedGroupColumn]);
 
   // Global Attendance Filters (Día, Semana, Estado)
   const [globalFilter, setGlobalFilter] = useState<GlobalFilterState>({
@@ -133,7 +148,6 @@ export function App() {
 
     setBatches(updatedBatches);
     setRawRowsByDate(updatedRawRows);
-    setActiveTab('resumen');
     saveBatchesToStorage(updatedBatches, updatedRawRows);
   };
 
