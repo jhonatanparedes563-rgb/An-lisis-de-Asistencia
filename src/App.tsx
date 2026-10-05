@@ -22,6 +22,7 @@ import { CFCView } from './components/CFCView';
 import { EvolucionView } from './components/EvolucionView';
 import { DatosView } from './components/DatosView';
 import { AIModelsView } from './components/AIModelsView';
+import { UsuariosView } from './components/UsuariosView';
 import { WorkerDetailModal } from './components/WorkerDetailModal';
 import { CargarExcelModal } from './components/CargarExcelModal';
 import { GlobalFilterBar } from './components/GlobalFilterBar';
@@ -30,6 +31,9 @@ import {
   filterAttendanceData,
   GlobalFilterState,
 } from './utils/filterUtils';
+import { LoginScreen } from './components/LoginScreen';
+import { UserManagementModal } from './components/UserManagementModal';
+import { AppUser, DEFAULT_USERS } from './types';
 import * as XLSX from 'xlsx';
 
 export function App() {
@@ -44,6 +48,85 @@ export function App() {
   });
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isLoadedFromStorage, setIsLoadedFromStorage] = useState(false);
+
+  // User Accounts Database in LocalStorage
+  const [users, setUsers] = useState<AppUser[]>(() => {
+    try {
+      const saved = localStorage.getItem('camposol_users_db');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return DEFAULT_USERS;
+  });
+
+  // Current Logged-in User Session (null means at Login Screen)
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(() => {
+    try {
+      const savedSessionId = localStorage.getItem('camposol_current_session');
+      if (savedSessionId) {
+        const savedUsers = localStorage.getItem('camposol_users_db');
+        const userList: AppUser[] = savedUsers ? JSON.parse(savedUsers) : DEFAULT_USERS;
+        const matched = userList.find((u) => u.id === savedSessionId);
+        if (matched) return matched;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    // Default to admin for immediate access
+    return DEFAULT_USERS[0];
+  });
+
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+
+  const handleLogin = (user: AppUser) => {
+    setCurrentUser(user);
+    localStorage.setItem('camposol_current_session', user.id);
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('camposol_current_session');
+    setIsUserModalOpen(false);
+  };
+
+  const handleSelectUser = (user: AppUser) => {
+    setCurrentUser(user);
+    localStorage.setItem('camposol_current_session', user.id);
+  };
+
+  const handleCreateUser = (newUser: AppUser) => {
+    const updated = [...users, newUser];
+    setUsers(updated);
+    localStorage.setItem('camposol_users_db', JSON.stringify(updated));
+  };
+
+  const handleDeleteUser = (userId: string) => {
+    if (userId === 'admin') return; // Proteger administrador principal
+    const updated = users.filter((u) => u.id !== userId);
+    setUsers(updated);
+    localStorage.setItem('camposol_users_db', JSON.stringify(updated));
+  };
+
+  const handleUpdateUser = (updatedUser: AppUser) => {
+    const updated = users.map((u) => (u.id === updatedUser.id ? updatedUser : u));
+    setUsers(updated);
+    localStorage.setItem('camposol_users_db', JSON.stringify(updated));
+    if (currentUser && currentUser.id === updatedUser.id) {
+      setCurrentUser(updatedUser);
+    }
+  };
+
+  const handleOpenUpload = () => {
+    if (!currentUser || currentUser.role !== 'ADMIN') {
+      setIsUserModalOpen(true);
+      return;
+    }
+    setIsUploadModalOpen(true);
+  };
 
   // Sync activeTab & group column to localStorage
   useEffect(() => {
@@ -208,15 +291,23 @@ export function App() {
     );
   }
 
+  // Si no hay sesión iniciada, mostrar la Pantalla de Login con Usuario y Contraseña
+  if (!currentUser) {
+    return <LoginScreen users={users} onLogin={handleLogin} />;
+  }
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-800 flex font-sans">
       {/* Vertical Navigation Sidebar */}
       <Sidebar
         currentView={activeTab}
         onSelectView={setActiveTab}
-        onOpenUpload={() => setIsUploadModalOpen(true)}
+        onOpenUpload={handleOpenUpload}
         onExportExcel={handleExportExcel}
         kpis={filteredKpis}
+        currentUser={currentUser}
+        onOpenUserModal={() => setIsUserModalOpen(true)}
+        onLogout={handleLogout}
       />
 
       {/* Main Content Area */}
@@ -224,8 +315,11 @@ export function App() {
         {/* Top Header */}
         <Header
           currentView={activeTab}
-          onOpenUpload={() => setIsUploadModalOpen(true)}
+          onOpenUpload={handleOpenUpload}
           kpis={filteredKpis}
+          currentUser={currentUser}
+          onOpenUserModal={() => setIsUserModalOpen(true)}
+          onLogout={handleLogout}
         />
 
         {/* Global Attendance Filter Bar (Día, Semana, Estado) */}
@@ -253,7 +347,7 @@ export function App() {
               days={filteredDays}
               onSelectWorker={setSelectedWorker}
               onGoToView={setActiveTab}
-              onOpenUpload={() => setIsUploadModalOpen(true)}
+              onOpenUpload={handleOpenUpload}
             />
           )}
 
@@ -297,13 +391,26 @@ export function App() {
             />
           )}
 
+          {activeTab === 'usuarios' && (
+            <UsuariosView
+              users={users}
+              currentUser={currentUser}
+              onCreateUser={handleCreateUser}
+              onDeleteUser={handleDeleteUser}
+              onUpdateUser={handleUpdateUser}
+              onSelectUser={handleSelectUser}
+            />
+          )}
+
           {activeTab === 'datos' && (
             <DatosView
               batches={batches}
               rawRowsByDate={rawRowsByDate}
               onDeleteBatch={handleDeleteBatch}
               onClearAll={handleClearAll}
-              onOpenUpload={() => setIsUploadModalOpen(true)}
+              onOpenUpload={handleOpenUpload}
+              currentUser={currentUser}
+              onOpenUserModal={() => setIsUserModalOpen(true)}
             />
           )}
         </main>
@@ -317,8 +424,8 @@ export function App() {
         />
       )}
 
-      {/* Upload New Excel Modal */}
-      {isUploadModalOpen && (
+      {/* Upload New Excel Modal (Exclusivo Administrador) */}
+      {isUploadModalOpen && currentUser.role === 'ADMIN' && (
         <CargarExcelModal
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
@@ -326,6 +433,18 @@ export function App() {
           existingDatesCount={batches.length}
         />
       )}
+
+      {/* User Management & Role Creation Modal */}
+      <UserManagementModal
+        isOpen={isUserModalOpen}
+        onClose={() => setIsUserModalOpen(false)}
+        currentUser={currentUser}
+        users={users}
+        onCreateUser={handleCreateUser}
+        onDeleteUser={handleDeleteUser}
+        onLogout={handleLogout}
+        onSelectUser={handleSelectUser}
+      />
     </div>
   );
 }

@@ -3,8 +3,10 @@ import {
   Trash2,
   Download,
   Plus,
+  Lock,
+  ShieldAlert,
 } from 'lucide-react';
-import { DayAttendanceBatch, RawWorkerRow } from '../types';
+import { DayAttendanceBatch, RawWorkerRow, AppUser } from '../types';
 import * as XLSX from 'xlsx';
 
 interface DatosViewProps {
@@ -13,6 +15,8 @@ interface DatosViewProps {
   onDeleteBatch: (date: string) => void;
   onClearAll: () => void;
   onOpenUpload: () => void;
+  currentUser?: AppUser;
+  onOpenUserModal?: () => void;
 }
 
 export const DatosView: React.FC<DatosViewProps> = ({
@@ -21,11 +25,14 @@ export const DatosView: React.FC<DatosViewProps> = ({
   onDeleteBatch,
   onClearAll,
   onOpenUpload,
+  currentUser,
+  onOpenUserModal,
 }) => {
   const [selectedDate, setSelectedDate] = useState<string>(
     batches[0]?.date || ''
   );
 
+  const isAdmin = currentUser ? currentUser.role === 'ADMIN' : true;
   const activeRows = rawRowsByDate[selectedDate] || [];
 
   const handleExportFullExcel = () => {
@@ -61,6 +68,26 @@ export const DatosView: React.FC<DatosViewProps> = ({
 
   return (
     <div className="w-full px-4 sm:px-6 py-3.5 flex flex-col space-y-3 font-sans h-full">
+      {/* Banner de Modo Consulta si no es Administrador */}
+      {!isAdmin && (
+        <div className="p-2.5 rounded-xl bg-sky-50 border border-sky-200 text-sky-900 text-xs flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="w-4 h-4 text-sky-600 shrink-0" />
+            <span>
+              <strong>Modo Consulta (Usuario):</strong> Las funciones de carga y eliminación de fechas están restringidas exclusivamente al perfil de Administrador.
+            </span>
+          </div>
+          {onOpenUserModal && (
+            <button
+              onClick={onOpenUserModal}
+              className="text-[11px] font-bold text-sky-700 underline hover:text-sky-900 shrink-0"
+            >
+              Cambiar a Admin
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Top Bar */}
       <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div className="flex items-center gap-2">
@@ -73,13 +100,24 @@ export const DatosView: React.FC<DatosViewProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5 self-start sm:self-auto">
-          <button
-            onClick={onOpenUpload}
-            className="flex items-center gap-1 px-3 py-1.5 bg-[#22C55E] hover:bg-[#16A34A] text-white text-xs font-semibold rounded-md shadow-2xs transition"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Cargar Día</span>
-          </button>
+          {isAdmin ? (
+            <button
+              onClick={onOpenUpload}
+              className="flex items-center gap-1 px-3 py-1.5 bg-[#22C55E] hover:bg-[#16A34A] text-white text-xs font-semibold rounded-md shadow-2xs transition"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Cargar Día</span>
+            </button>
+          ) : (
+            <button
+              onClick={onOpenUserModal}
+              className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 text-slate-400 text-xs font-semibold rounded-md border border-slate-200 cursor-pointer"
+              title="Solo Administrador"
+            >
+              <Lock className="w-3.5 h-3.5 text-slate-400" />
+              <span>Cargar (Solo Admin)</span>
+            </button>
+          )}
 
           <button
             onClick={handleExportFullExcel}
@@ -89,13 +127,15 @@ export const DatosView: React.FC<DatosViewProps> = ({
             <span>Exportar Todo</span>
           </button>
 
-          <button
-            onClick={onClearAll}
-            className="flex items-center gap-1 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold rounded-md border border-rose-200 transition"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span>Limpiar Todo</span>
-          </button>
+          {isAdmin && (
+            <button
+              onClick={onClearAll}
+              className="flex items-center gap-1 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold rounded-md border border-rose-200 transition"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Limpiar Todo</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -121,15 +161,18 @@ export const DatosView: React.FC<DatosViewProps> = ({
                 </span>
               </div>
 
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDeleteBatch(b.date);
-                }}
-                className="text-slate-300 hover:text-rose-600 p-1 rounded transition"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              {isAdmin && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteBatch(b.date);
+                  }}
+                  className="text-slate-300 hover:text-rose-600 p-1 rounded transition"
+                  title="Eliminar esta jornada"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
             <div className="my-2 pt-2 border-t border-slate-100 flex items-center justify-between">

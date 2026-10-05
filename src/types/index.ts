@@ -89,4 +89,70 @@ export interface MatrixKPIs {
   trend: 'MEJORANDO' | 'EMPEORANDO' | 'ESTABLE' | 'UNICO_DIA';
 }
 
-export type ActiveTab = 'resumen' | 'personal' | 'cfc' | 'evolucion' | 'ai' | 'datos';
+export type ActiveTab = 'resumen' | 'personal' | 'cfc' | 'evolucion' | 'ai' | 'usuarios' | 'datos';
+
+export type UserRole = 'ADMIN' | 'USER';
+
+export interface AppUser {
+  id: string;
+  name: string;
+  username: string;
+  email: string;
+  password?: string;
+  role: UserRole;
+  title: string;
+  avatarColor: string;
+  description: string;
+  createdAt?: string;
+  permissions: {
+    canUploadData: boolean;
+    canDeleteData: boolean;
+    canExportExcel: boolean;
+    canViewAI: boolean;
+    canAccessDiagnostics: boolean;
+  };
+}
+
+export const DEFAULT_USERS: AppUser[] = [
+  {
+    id: 'admin',
+    name: 'Administrador Camposol',
+    username: 'admin',
+    email: 'administrador@camposol.com',
+    password: 'admin',
+    role: 'ADMIN',
+    title: 'Administrador General',
+    avatarColor: 'bg-emerald-600',
+    description: 'Control y gestión total. Autorizado para crear usuarios, cargar nuevas jornadas, eliminar datos y configurar parámetros.',
+    createdAt: '01/10/2026',
+    permissions: {
+      canUploadData: true,
+      canDeleteData: true,
+      canExportExcel: true,
+      canViewAI: true,
+      canAccessDiagnostics: true,
+    },
+  },
+  {
+    id: 'user',
+    name: 'Usuario Consulta',
+    username: 'usuario',
+    email: 'consulta@camposol.com',
+    password: 'user123',
+    role: 'USER',
+    title: 'Operador / Analista',
+    avatarColor: 'bg-sky-600',
+    description: 'Perfil de consulta y análisis. Visualiza dotación, evolución, CFCs, modelos IA y descarga reportes Excel en modo seguro.',
+    createdAt: '01/10/2026',
+    permissions: {
+      canUploadData: false,
+      canDeleteData: false,
+      canExportExcel: true,
+      canViewAI: true,
+      canAccessDiagnostics: false,
+    },
+  },
+];
+
+export const APP_USERS = DEFAULT_USERS;
+
