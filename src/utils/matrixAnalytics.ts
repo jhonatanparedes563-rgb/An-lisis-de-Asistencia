@@ -134,13 +134,14 @@ export function computeAttendanceMatrix(
 
   const totalUniqueWorkers = workerRegistry.size;
 
-  // 3. Build Daily Evolution Stats with Active Cohort (prevents artificial phantom absences)
+  // 3. Build Daily Evolution Stats discounting DT (Scheduled company rest is NOT absence)
   const daysEvolution: DayEvolutionStat[] = sortedBatches.map((batch) => {
     const { formatted, dayName } = formatISODate(batch.date);
     const workersWorkingCount = batch.workersCount;
 
     // Count workers who were active in the company on or before this date
     let activeCohortToday = 0;
+    let dtWorkersCount = 0;
     let absentCount = 0;
 
     workerRegistry.forEach((val) => {
@@ -151,8 +152,24 @@ export function computeAttendanceMatrix(
 
       if (firstDate && firstDate <= batch.date) {
         activeCohortToday++;
-        if (!val.attendedDates.has(batch.date)) {
-          absentCount++;
+        const attended = val.attendedDates.has(batch.date);
+
+        if (!attended) {
+          // Check if this worker's CFC had DT on this date
+          const workerCfcKey = val.cfc ? val.cfc.trim().toLowerCase() : '';
+          let isDT = false;
+          if (workerCfcKey) {
+            const cfcAttendanceToday = cfcAttendanceByDate.get(`${workerCfcKey}||${batch.date}`) || 0;
+            if (cfcAttendanceToday === 0) {
+              isDT = true;
+            }
+          }
+
+          if (isDT) {
+            dtWorkersCount++;
+          } else {
+            absentCount++;
+          }
         }
       }
     });
@@ -160,10 +177,17 @@ export function computeAttendanceMatrix(
     if (activeCohortToday < workersWorkingCount) {
       activeCohortToday = workersWorkingCount;
       absentCount = 0;
+      dtWorkersCount = 0;
     }
 
+    // Scheduled personnel to work today: active cohort minus personnel on scheduled DT
+    const scheduledWorkersCount = Math.max(workersWorkingCount, activeCohortToday - dtWorkersCount);
+    
+    // Attendance rate based strictly on personnel scheduled to work (DT is not penalized)
     const attendanceRate =
-      activeCohortToday > 0 ? (workersWorkingCount / activeCohortToday) * 100 : 100;
+      scheduledWorkersCount > 0
+        ? Math.min(100, Number(((workersWorkingCount / scheduledWorkersCount) * 100).toFixed(1)))
+        : 100;
 
     return {
       date: batch.date,
@@ -172,6 +196,8 @@ export function computeAttendanceMatrix(
       workersWorkingCount,
       absentCount,
       attendanceRate,
+      dtWorkersCount,
+      scheduledWorkersCount,
     };
   });
 

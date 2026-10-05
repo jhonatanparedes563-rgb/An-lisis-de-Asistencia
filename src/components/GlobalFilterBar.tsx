@@ -8,6 +8,7 @@ import {
   Users,
   RotateCcw,
   Check,
+  Coffee,
 } from 'lucide-react';
 import { DayEvolutionStat } from '../types';
 import { GlobalFilterState, WeekOption } from '../utils/filterUtils';
@@ -79,7 +80,7 @@ export const GlobalFilterBar: React.FC<GlobalFilterBarProps> = ({
     });
   };
 
-  const handleStatusChange = (status: 'all' | 'asistio' | 'falto') => {
+  const handleStatusChange = (status: 'all' | 'asistio' | 'falto' | 'dt') => {
     onFilterChange({
       ...filter,
       status,
@@ -142,7 +143,7 @@ export const GlobalFilterBar: React.FC<GlobalFilterBarProps> = ({
             <div className="absolute right-2 text-[10px] text-slate-400 pointer-events-none">▼</div>
           </div>
 
-          {/* 3. Status Segmented Buttons (Asistió / Faltó / Todos) */}
+          {/* 3. Status Segmented Buttons (Asistió / Faltó / DT / Todos) */}
           <div className="inline-flex items-center p-0.5 bg-slate-100 rounded-md border border-slate-200 text-xs">
             <button
               onClick={() => handleStatusChange('all')}
@@ -172,9 +173,22 @@ export const GlobalFilterBar: React.FC<GlobalFilterBarProps> = ({
                   ? 'bg-rose-600 text-white shadow-2xs font-bold'
                   : 'text-rose-700 hover:bg-rose-50'
               }`}
+              title="Faltas reales (no incluye descansos programados DT)"
             >
               <UserX className="w-3 h-3" />
               <span>Faltó</span>
+            </button>
+            <button
+              onClick={() => handleStatusChange('dt')}
+              className={`flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-semibold transition ${
+                filter.status === 'dt'
+                  ? 'bg-sky-600 text-white shadow-2xs font-bold'
+                  : 'text-sky-700 hover:bg-sky-50'
+              }`}
+              title="Personal en Descanso Turno (DT) programado por la empresa"
+            >
+              <Coffee className="w-3 h-3" />
+              <span>DT (Descanso)</span>
             </button>
           </div>
         </div>

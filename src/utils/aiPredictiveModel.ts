@@ -43,8 +43,9 @@ export interface DayOfWeekPattern {
   dayIndex: number;
   occurrences: number;
   avgAttendanceRate: number;
-  avgAbsenceRate: number; // % inasistencias aprendidas
+  avgAbsenceRate: number; // % inasistencias reales aprendidas (descontando DT)
   avgWorkingCount: number;
+  avgDtCount?: number; // Promedio de colaboradores en descanso turnado (DT)
   riskClassification: 'CRITICO' | 'MODERADO' | 'BAJO';
 }
 
@@ -293,6 +294,9 @@ export function learnBehavioralPatterns(
         group.days.reduce((sum, d) => sum + d.workersWorkingCount, 0) / occurrences
       );
       const avgAbsenceRate = Number((100 - avgAttendanceRate).toFixed(1));
+      const avgDtCount = Math.round(
+        group.days.reduce((sum, d) => sum + (d.dtWorkersCount || 0), 0) / occurrences
+      );
 
       let riskClassification: 'CRITICO' | 'MODERADO' | 'BAJO' = 'BAJO';
       if (avgAbsenceRate >= 8) riskClassification = 'CRITICO';
@@ -305,6 +309,7 @@ export function learnBehavioralPatterns(
         avgAttendanceRate: Number(avgAttendanceRate.toFixed(1)),
         avgAbsenceRate,
         avgWorkingCount,
+        avgDtCount,
         riskClassification,
       };
     })

@@ -26,7 +26,7 @@ export const PersonalView: React.FC<PersonalViewProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<
-    'TODOS' | 'CON_FALTAS' | 'PERFECTA' | 'FALTARON_HOY'
+    'TODOS' | 'CON_FALTAS' | 'PERFECTA' | 'FALTARON_HOY' | 'EN_DT_HOY'
   >('TODOS');
   const [sortField, setSortField] = useState<'absent' | 'attended' | 'rate' | 'name'>('absent');
   const [sortAsc, setSortAsc] = useState(false);
@@ -47,7 +47,12 @@ export const PersonalView: React.FC<PersonalViewProps> = ({
     } else if (filterType === 'FALTARON_HOY' && lastDate) {
       list = list.filter((w) => {
         const lastEntry = w.history.find((h) => h.date === lastDate);
-        return lastEntry && !lastEntry.attended;
+        return lastEntry && !lastEntry.attended && !lastEntry.isDT;
+      });
+    } else if (filterType === 'EN_DT_HOY' && lastDate) {
+      list = list.filter((w) => {
+        const lastEntry = w.history.find((h) => h.date === lastDate);
+        return lastEntry && lastEntry.isDT && !lastEntry.attended;
       });
     }
 
@@ -180,7 +185,7 @@ export const PersonalView: React.FC<PersonalViewProps> = ({
               Con Faltas
             </button>
 
-            {days.length >= 2 && (
+            {days.length >= 1 && (
               <button
                 onClick={() => setFilterType('FALTARON_HOY')}
                 className={`px-2.5 py-1 rounded-md text-xs font-semibold transition ${
@@ -188,8 +193,23 @@ export const PersonalView: React.FC<PersonalViewProps> = ({
                     ? 'bg-amber-600 text-white'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
+                title="Personal programado que no asistió (excluye descansos programados DT)"
               >
                 Faltaron Hoy
+              </button>
+            )}
+
+            {days.length >= 1 && (
+              <button
+                onClick={() => setFilterType('EN_DT_HOY')}
+                className={`px-2.5 py-1 rounded-md text-xs font-semibold transition ${
+                  filterType === 'EN_DT_HOY'
+                    ? 'bg-sky-600 text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+                title="Personal en Descanso Turno (DT) programado por la empresa"
+              >
+                En DT Hoy
               </button>
             )}
 

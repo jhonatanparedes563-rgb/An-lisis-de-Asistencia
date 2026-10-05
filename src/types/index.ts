@@ -70,9 +70,11 @@ export interface DayEvolutionStat {
   date: string;
   formattedDate: string;
   dayName: string;
-  workersWorkingCount: number; // e.g. 800, 700, 900
-  absentCount: number; // universe - workersWorkingCount
-  attendanceRate: number; // (workersWorkingCount / universe) * 100
+  workersWorkingCount: number; // Asistieron a laborar hoy
+  absentCount: number; // Faltas reales (descontando personal en DT programado)
+  attendanceRate: number; // (workersWorkingCount / scheduledWorkersCount) * 100
+  dtWorkersCount?: number; // Personal en Descanso Turno (DT) programado por la empresa
+  scheduledWorkersCount?: number; // Personal programado para laborar (Activos - DT)
 }
 
 export interface MatrixKPIs {

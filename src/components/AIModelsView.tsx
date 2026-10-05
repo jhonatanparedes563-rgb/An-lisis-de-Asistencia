@@ -427,8 +427,15 @@ Estructura:
                     <tr>
                       <th className="py-2 px-3">Día</th>
                       <th className="py-2 px-2 text-center">Jornadas</th>
-                      <th className="py-2 px-2 text-right">Asistencia Media</th>
-                      <th className="py-2 px-2 text-right text-rose-800">Inasistencia</th>
+                      <th className="py-2 px-2 text-right" title="Asistencia sobre dotación programada (descontando DT)">
+                        Asist. Media
+                      </th>
+                      <th className="py-2 px-2 text-right text-rose-800" title="Inasistencias reales (no incluye descansos DT)">
+                        Faltas Reales
+                      </th>
+                      <th className="py-2 px-2 text-right text-sky-800" title="Personal en descanso programado por la empresa (DT)">
+                        En DT
+                      </th>
                       <th className="py-2 px-3 text-center">Nivel</th>
                     </tr>
                   </thead>
@@ -446,6 +453,13 @@ Estructura:
                         </td>
                         <td className="py-1.5 px-2 text-right font-bold text-rose-600">
                           {p.avgAbsenceRate}%
+                        </td>
+                        <td className="py-1.5 px-2 text-right font-medium text-sky-700">
+                          {p.avgDtCount && p.avgDtCount > 0 ? (
+                            <span>{p.avgDtCount.toLocaleString()}</span>
+                          ) : (
+                            <span className="text-slate-300">-</span>
+                          )}
                         </td>
                         <td className="py-1.5 px-3 text-center">
                           <span
@@ -465,6 +479,9 @@ Estructura:
                   </tbody>
                 </table>
               </div>
+              <p className="text-[11px] text-slate-400 italic">
+                * Los descansos otorgados por la empresa (DT) se descuentan de la dotación programada y no se contabilizan como faltas.
+              </p>
             </div>
 
             {/* Comportamiento Semana a Semana */}

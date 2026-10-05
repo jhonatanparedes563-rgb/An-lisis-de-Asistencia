@@ -15,7 +15,7 @@ export interface WeekOption {
 export interface GlobalFilterState {
   week: string; // 'all' | '2026-W40'
   date: string; // 'all' | '2026-10-03'
-  status: 'all' | 'asistio' | 'falto';
+  status: 'all' | 'asistio' | 'falto' | 'dt';
 }
 
 /**
@@ -133,14 +133,27 @@ export function filterAttendanceData(
     if (filter.date !== 'all') {
       filteredWorkers = workers.filter((w) => {
         const h = w.history.find((item) => item.date === filter.date);
-        return h && !h.attended;
+        return h && !h.attended && !h.isDT; // Scheduled company rest is NOT absence!
       });
     } else if (filter.week !== 'all') {
       filteredWorkers = workers.filter((w) => {
-        return w.history.some((h) => activeDates.includes(h.date) && !h.attended);
+        return w.history.some((h) => activeDates.includes(h.date) && !h.attended && !h.isDT);
       });
     } else {
       filteredWorkers = workers.filter((w) => w.absentDaysCount > 0);
+    }
+  } else if (filter.status === 'dt') {
+    if (filter.date !== 'all') {
+      filteredWorkers = workers.filter((w) => {
+        const h = w.history.find((item) => item.date === filter.date);
+        return h && h.isDT && !h.attended;
+      });
+    } else if (filter.week !== 'all') {
+      filteredWorkers = workers.filter((w) => {
+        return w.history.some((h) => activeDates.includes(h.date) && h.isDT && !h.attended);
+      });
+    } else {
+      filteredWorkers = workers.filter((w) => (w.dtDaysCount || 0) > 0);
     }
   }
 

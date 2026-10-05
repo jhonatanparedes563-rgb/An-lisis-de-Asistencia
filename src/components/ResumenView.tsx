@@ -39,7 +39,7 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
     return workers
       .filter((w) => {
         const lastRec = w.history.find((h) => h.date === lastDay.date);
-        return lastRec && !lastRec.attended;
+        return lastRec && !lastRec.attended && !lastRec.isDT;
       })
       .slice(0, 8);
   }, [workers, days.length, lastDay]);
@@ -159,14 +159,19 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
       {days.length >= 1 && lastDay && lastDay.absentCount > 0 && (
         <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-2.5">
           <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-rose-500" />
               <h3 className="text-xs font-bold text-slate-800">
                 Faltaron en Última Fecha ({lastDay.formattedDate})
               </h3>
               <span className="text-xs text-rose-600 font-mono font-bold">
-                ({lastDay.absentCount})
+                ({lastDay.absentCount} {lastDay.absentCount === 1 ? 'falta' : 'faltas'})
               </span>
+              {(lastDay.dtWorkersCount ?? 0) > 0 && (
+                <span className="text-[11px] text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded font-mono font-medium">
+                  🔵 {lastDay.dtWorkersCount?.toLocaleString()} en DT (Descanso programado)
+                </span>
+              )}
             </div>
 
             <button
