@@ -1,13 +1,10 @@
 import React, { useState } from 'react';
 import {
   ShieldCheck,
-  UserCheck,
-  KeyRound,
   Eye,
   EyeOff,
   LogIn,
   AlertCircle,
-  Building2,
   Lock,
   User as UserIcon,
 } from 'lucide-react';
@@ -68,16 +65,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin }) => {
       setIsLoading(false);
       onLogin(matchedUser);
     }, 300);
-  };
-
-  const handleQuickLogin = (role: 'ADMIN' | 'USER') => {
-    const target = users.find((u) => u.role === role);
-    if (target) {
-      setUsernameOrEmail(target.username);
-      setPassword(target.password || '');
-      setError(null);
-      onLogin(target);
-    }
   };
 
   return (
@@ -176,57 +163,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin }) => {
             )}
           </button>
         </form>
-
-        {/* Separator */}
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-slate-200" />
-          </div>
-          <div className="relative flex justify-center text-[11px] uppercase">
-            <span className="bg-white px-2 text-slate-400 font-semibold tracking-wider">
-              Acceso Rápido Demo
-            </span>
-          </div>
-        </div>
-
-        {/* Quick Access Badges */}
-        <div className="grid grid-cols-2 gap-2.5">
-          <button
-            type="button"
-            onClick={() => handleQuickLogin('ADMIN')}
-            className="p-2.5 rounded-xl border border-emerald-200 bg-emerald-50/50 hover:bg-emerald-100/60 transition flex items-center gap-2 text-left cursor-pointer group"
-          >
-            <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
-              <ShieldCheck className="w-4 h-4" />
-            </div>
-            <div className="truncate">
-              <div className="text-xs font-bold text-slate-800 leading-none">
-                Admin
-              </div>
-              <div className="text-[10px] text-emerald-700 font-mono mt-0.5">
-                admin / admin
-              </div>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleQuickLogin('USER')}
-            className="p-2.5 rounded-xl border border-sky-200 bg-sky-50/50 hover:bg-sky-100/60 transition flex items-center gap-2 text-left cursor-pointer group"
-          >
-            <div className="w-7 h-7 rounded-lg bg-sky-600 text-white flex items-center justify-center shrink-0">
-              <UserCheck className="w-4 h-4" />
-            </div>
-            <div className="truncate">
-              <div className="text-xs font-bold text-slate-800 leading-none">
-                Usuario
-              </div>
-              <div className="text-[10px] text-sky-700 font-mono mt-0.5">
-                usuario / user123
-              </div>
-            </div>
-          </button>
-        </div>
       </div>
 
       {/* Footer Branding */}
