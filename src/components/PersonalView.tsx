@@ -91,6 +91,16 @@ export const PersonalView: React.FC<PersonalViewProps> = ({
     setCurrentPage(1);
   }, [searchTerm, filterType, sortField, sortAsc, pageSize]);
 
+  const handleSort = (field: 'absent' | 'attended' | 'rate' | 'name' | 'cfc') => {
+    if (sortField === field) {
+      setSortAsc(!sortAsc);
+    } else {
+      setSortField(field);
+      // For name and cfc default to A-Z (ascending = true); for metrics (absent, attended, rate) default to highest first (ascending = false)
+      setSortAsc(field === 'name' || field === 'cfc');
+    }
+  };
+
   const totalPages = pageSize === -1 ? 1 : Math.ceil(sorted.length / pageSize) || 1;
 
   const paginatedWorkers = useMemo(() => {
@@ -278,51 +288,64 @@ export const PersonalView: React.FC<PersonalViewProps> = ({
             <thead className="bg-[#E0F2FE] text-[#0369A1] font-semibold text-[11px] select-none sticky top-0 z-10 shadow-2xs">
               <tr>
                 <th
-                  onClick={() => {
-                    setSortField('name');
-                    setSortAsc(!sortAsc);
-                  }}
+                  onClick={() => handleSort('name')}
                   className="py-2.5 px-3.5 cursor-pointer hover:bg-sky-100 transition min-w-[200px]"
                 >
-                  Trabajador ˅
+                  <div className="flex items-center gap-1">
+                    <span>Trabajador</span>
+                    <span className="text-[10px] text-sky-800">
+                      {sortField === 'name' ? (sortAsc ? '▲' : '▼') : '↕'}
+                    </span>
+                  </div>
                 </th>
                 <th
-                  onClick={() => {
-                    setSortField('cfc');
-                    setSortAsc(!sortAsc);
-                  }}
+                  onClick={() => handleSort('cfc')}
                   className="py-2.5 px-2.5 cursor-pointer hover:bg-sky-100 transition min-w-[130px] font-bold"
                   title="Ordenar por CFC"
                 >
-                  CFC ˅
+                  <div className="flex items-center gap-1">
+                    <span>CFC</span>
+                    <span className="text-[10px] text-sky-800">
+                      {sortField === 'cfc' ? (sortAsc ? '▲' : '▼') : '↕'}
+                    </span>
+                  </div>
                 </th>
                 <th className="py-2.5 px-2.5 min-w-[90px]">DNI</th>
                 <th
-                  onClick={() => {
-                    setSortField('attended');
-                    setSortAsc(!sortAsc);
-                  }}
-                  className="py-2.5 px-2.5 text-right font-bold cursor-pointer hover:bg-sky-100 transition min-w-[70px]"
+                  onClick={() => handleSort('attended')}
+                  className="py-2.5 px-2.5 text-right font-bold cursor-pointer hover:bg-sky-100 transition min-w-[75px]"
+                  title="Ordenar por asistencias"
                 >
-                  Asistió ˅
+                  <div className="flex items-center justify-end gap-1">
+                    <span>Asistió</span>
+                    <span className="text-[10px] text-sky-800">
+                      {sortField === 'attended' ? (sortAsc ? '▲' : '▼') : '↕'}
+                    </span>
+                  </div>
                 </th>
                 <th
-                  onClick={() => {
-                    setSortField('absent');
-                    setSortAsc(!sortAsc);
-                  }}
-                  className="py-2.5 px-2.5 text-right font-bold cursor-pointer hover:bg-sky-100 transition min-w-[65px]"
+                  onClick={() => handleSort('absent')}
+                  className="py-2.5 px-2.5 text-right font-bold cursor-pointer hover:bg-sky-100 transition min-w-[70px]"
+                  title="Ordenar por faltas"
                 >
-                  Faltó ˅
+                  <div className="flex items-center justify-end gap-1">
+                    <span>Faltó</span>
+                    <span className="text-[10px] text-sky-800">
+                      {sortField === 'absent' ? (sortAsc ? '▲' : '▼') : '↕'}
+                    </span>
+                  </div>
                 </th>
                 <th
-                  onClick={() => {
-                    setSortField('rate');
-                    setSortAsc(!sortAsc);
-                  }}
-                  className="py-2.5 px-2.5 text-right font-bold cursor-pointer hover:bg-sky-100 transition min-w-[70px]"
+                  onClick={() => handleSort('rate')}
+                  className="py-2.5 px-2.5 text-right font-bold cursor-pointer hover:bg-sky-100 transition min-w-[75px]"
+                  title="Ordenar por % de asistencia"
                 >
-                  % ˅
+                  <div className="flex items-center justify-end gap-1">
+                    <span>%</span>
+                    <span className="text-[10px] text-sky-800">
+                      {sortField === 'rate' ? (sortAsc ? '▲' : '▼') : '↕'}
+                    </span>
+                  </div>
                 </th>
 
                 {/* Date Columns */}

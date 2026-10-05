@@ -113,48 +113,42 @@ export function filterAttendanceData(
   // Filter daysEvolution
   const filteredDays = days.filter((d) => activeDates.includes(d.date));
 
-  // 2. Filter workers by attendance status
-  let filteredWorkers = workers;
+  // 2. Recompute worker attendance metrics strictly for the active dates
+  const computedWorkers: WorkerAttendanceSummary[] = workers.map((w) => {
+    const activeHistory = w.history.filter((h) => activeDates.includes(h.date));
+    const attendedDaysCount = activeHistory.filter((h) => h.attended).length;
+    const absentDaysCount = activeHistory.filter((h) => !h.attended && !h.isDT).length;
+    const dtDaysCount = activeHistory.filter((h) => h.isDT && !h.attended).length;
+    const totalDaysEvaluated = activeDates.length;
+    const evaluatedDaysForRate = attendedDaysCount + absentDaysCount;
+    const attendanceRate =
+      evaluatedDaysForRate > 0
+        ? (attendedDaysCount / evaluatedDaysForRate) * 100
+        : activeHistory.length > 0
+        ? 100
+        : 0;
+
+    return {
+      ...w,
+      history: activeHistory,
+      attendedDaysCount,
+      absentDaysCount,
+      dtDaysCount,
+      totalDaysEvaluated,
+      attendanceRate,
+      isPerfect: absentDaysCount === 0 && attendedDaysCount > 0,
+    };
+  });
+
+  // Filter workers based on status for the active dates
+  let filteredWorkers = computedWorkers;
 
   if (filter.status === 'asistio') {
-    if (filter.date !== 'all') {
-      filteredWorkers = workers.filter((w) => {
-        const h = w.history.find((item) => item.date === filter.date);
-        return h && h.attended;
-      });
-    } else if (filter.week !== 'all') {
-      filteredWorkers = workers.filter((w) => {
-        return w.history.some((h) => activeDates.includes(h.date) && h.attended);
-      });
-    } else {
-      filteredWorkers = workers.filter((w) => w.attendedDaysCount > 0);
-    }
+    filteredWorkers = computedWorkers.filter((w) => w.attendedDaysCount > 0);
   } else if (filter.status === 'falto') {
-    if (filter.date !== 'all') {
-      filteredWorkers = workers.filter((w) => {
-        const h = w.history.find((item) => item.date === filter.date);
-        return h && !h.attended && !h.isDT; // Scheduled company rest is NOT absence!
-      });
-    } else if (filter.week !== 'all') {
-      filteredWorkers = workers.filter((w) => {
-        return w.history.some((h) => activeDates.includes(h.date) && !h.attended && !h.isDT);
-      });
-    } else {
-      filteredWorkers = workers.filter((w) => w.absentDaysCount > 0);
-    }
+    filteredWorkers = computedWorkers.filter((w) => w.absentDaysCount > 0);
   } else if (filter.status === 'dt') {
-    if (filter.date !== 'all') {
-      filteredWorkers = workers.filter((w) => {
-        const h = w.history.find((item) => item.date === filter.date);
-        return h && h.isDT && !h.attended;
-      });
-    } else if (filter.week !== 'all') {
-      filteredWorkers = workers.filter((w) => {
-        return w.history.some((h) => activeDates.includes(h.date) && h.isDT && !h.attended);
-      });
-    } else {
-      filteredWorkers = workers.filter((w) => (w.dtDaysCount || 0) > 0);
-    }
+    filteredWorkers = computedWorkers.filter((w) => (w.dtDaysCount || 0) > 0);
   }
 
   // 3. Filter CFC List based on active days and filtered workers
