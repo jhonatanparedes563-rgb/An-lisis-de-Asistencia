@@ -29,7 +29,6 @@ import { GlobalFilterBar } from './components/GlobalFilterBar';
 import {
   extractAvailableWeeks,
   filterAttendanceData,
-  getCurrentOrLatestWeek,
   GlobalFilterState,
 } from './utils/filterUtils';
 import { LoginScreen } from './components/LoginScreen';
@@ -173,23 +172,6 @@ export function App() {
     return extractAvailableWeeks(daysEvolution);
   }, [daysEvolution]);
 
-  // Set default week to the current calendar week (or latest active week in dataset)
-  useEffect(() => {
-    if (availableWeeks.length > 0) {
-      const defaultWeek = getCurrentOrLatestWeek(availableWeeks);
-      setGlobalFilter((prev) => {
-        // If not set yet (is 'all'), or if the selected week is no longer in availableWeeks, select default current week
-        if (prev.week === 'all' || !availableWeeks.some((w) => w.id === prev.week)) {
-          return {
-            ...prev,
-            week: defaultWeek,
-          };
-        }
-        return prev;
-      });
-    }
-  }, [availableWeeks]);
-
   // Filter attendance data across all modules
   const {
     filteredWorkers,
@@ -218,9 +200,8 @@ export function App() {
   }, [filteredCfcList]);
 
   const handleResetFilters = () => {
-    const defaultWeek = getCurrentOrLatestWeek(availableWeeks);
     setGlobalFilter({
-      week: defaultWeek,
+      week: 'all',
       date: 'all',
       status: 'all',
     });
