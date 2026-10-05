@@ -188,6 +188,7 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
               <thead className="bg-[#E0F2FE] text-[#0369A1] font-semibold text-[11px]">
                 <tr>
                   <th className="py-2 px-3">Trabajador</th>
+                  <th className="py-2 px-2">CFC</th>
                   <th className="py-2 px-2">DNI</th>
                   <th className="py-2 px-2 text-right">Asistió</th>
                   <th className="py-2 px-2 text-right">Faltas</th>
@@ -202,6 +203,11 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
                     className="hover:bg-slate-50 cursor-pointer transition"
                   >
                     <td className="py-1.5 px-3 font-medium text-slate-800">{w.name}</td>
+                    <td className="py-1.5 px-2">
+                      <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/80">
+                        {w.cfc || w.area || 'Sin Asignar'}
+                      </span>
+                    </td>
                     <td className="py-1.5 px-2 text-slate-400 font-mono text-[11px]">{w.dni || '-'}</td>
                     <td className="py-1.5 px-2 text-right font-mono text-emerald-600 font-semibold">
                       {w.attendedDaysCount}d
@@ -242,6 +248,7 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
               <thead className="bg-[#E0F2FE] text-[#0369A1] font-semibold text-[11px]">
                 <tr>
                   <th className="py-2 px-3">Trabajador</th>
+                  <th className="py-2 px-2">CFC</th>
                   <th className="py-2 px-2 text-right">Asistió</th>
                   <th className="py-2 px-2 text-right">Faltó</th>
                   <th className="py-2 px-2 text-right">%</th>
@@ -250,7 +257,7 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
               <tbody className="divide-y divide-slate-100 bg-white">
                 {topAbsentWorkers.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="py-4 text-center text-slate-400 text-xs">
+                    <td colSpan={5} className="py-4 text-center text-slate-400 text-xs">
                       Sin faltas registradas
                     </td>
                   </tr>
@@ -262,6 +269,11 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
                       className="hover:bg-slate-50 cursor-pointer transition"
                     >
                       <td className="py-1.5 px-3 font-medium text-slate-800">{w.name}</td>
+                      <td className="py-1.5 px-2">
+                        <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/80">
+                          {w.cfc || w.area || 'Sin Asignar'}
+                        </span>
+                      </td>
                       <td className="py-1.5 px-2 text-right font-mono text-emerald-600 font-semibold">
                         {w.attendedDaysCount}d
                       </td>

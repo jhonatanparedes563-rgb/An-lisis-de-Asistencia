@@ -29,13 +29,17 @@ export const WorkerDetailModal: React.FC<WorkerDetailModalProps> = ({ worker, on
               <h3 className="text-lg font-bold text-slate-800 leading-tight">
                 {worker.name}
               </h3>
-              <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-1">
                 {worker.dni && (
                   <span>
-                    DNI / Código: <strong className="font-mono text-slate-700">{worker.dni}</strong>
+                    DNI: <strong className="font-mono text-slate-700">{worker.dni}</strong>
                   </span>
                 )}
-                {worker.area && (
+                <span>•</span>
+                <span>
+                  CFC: <strong className="text-emerald-800 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded font-bold">{worker.cfc || worker.area || 'Sin Asignar'}</strong>
+                </span>
+                {worker.area && worker.area !== worker.cfc && (
                   <>
                     <span>•</span>
                     <span>Área: <strong className="text-slate-700">{worker.area}</strong></span>

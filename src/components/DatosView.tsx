@@ -207,8 +207,8 @@ export const DatosView: React.FC<DatosViewProps> = ({
                 <tr>
                   <th className="py-2 px-3">#</th>
                   <th className="py-2 px-3">Trabajador</th>
+                  <th className="py-2 px-3">CFC</th>
                   <th className="py-2 px-3">DNI</th>
-                  <th className="py-2 px-3">Área / CFC</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
@@ -220,11 +220,13 @@ export const DatosView: React.FC<DatosViewProps> = ({
                     <td className="py-1.5 px-3 font-medium text-slate-800">
                       {r.workerName}
                     </td>
+                    <td className="py-1.5 px-3">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/80">
+                        {r.cfc || r.area || 'Sin Asignar'}
+                      </span>
+                    </td>
                     <td className="py-1.5 px-3 text-slate-400 font-mono text-[11px]">
                       {r.dni || '-'}
-                    </td>
-                    <td className="py-1.5 px-3 text-slate-600 font-mono text-xs">
-                      {r.area || '-'}
                     </td>
                   </tr>
                 ))}

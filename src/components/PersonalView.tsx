@@ -28,7 +28,7 @@ export const PersonalView: React.FC<PersonalViewProps> = ({
   const [filterType, setFilterType] = useState<
     'TODOS' | 'CON_FALTAS' | 'PERFECTA' | 'FALTARON_HOY' | 'EN_DT_HOY'
   >('TODOS');
-  const [sortField, setSortField] = useState<'absent' | 'attended' | 'rate' | 'name'>('absent');
+  const [sortField, setSortField] = useState<'absent' | 'attended' | 'rate' | 'name' | 'cfc'>('absent');
   const [sortAsc, setSortAsc] = useState(false);
 
   // Pagination states
@@ -61,7 +61,9 @@ export const PersonalView: React.FC<PersonalViewProps> = ({
       list = list.filter(
         (w) =>
           w.name.toLowerCase().includes(q) ||
-          (w.dni && w.dni.toLowerCase().includes(q))
+          (w.dni && w.dni.toLowerCase().includes(q)) ||
+          (w.cfc && w.cfc.toLowerCase().includes(q)) ||
+          (w.area && w.area.toLowerCase().includes(q))
       );
     }
 
@@ -75,6 +77,11 @@ export const PersonalView: React.FC<PersonalViewProps> = ({
       else if (sortField === 'attended') comp = a.attendedDaysCount - b.attendedDaysCount;
       else if (sortField === 'rate') comp = a.attendanceRate - b.attendanceRate;
       else if (sortField === 'name') comp = a.name.localeCompare(b.name);
+      else if (sortField === 'cfc') {
+        const cfcA = a.cfc || a.area || 'Sin Asignar';
+        const cfcB = b.cfc || b.area || 'Sin Asignar';
+        comp = cfcA.localeCompare(cfcB);
+      }
       return sortAsc ? comp : -comp;
     });
   }, [filtered, sortField, sortAsc]);
@@ -279,6 +286,16 @@ export const PersonalView: React.FC<PersonalViewProps> = ({
                 >
                   Trabajador ˅
                 </th>
+                <th
+                  onClick={() => {
+                    setSortField('cfc');
+                    setSortAsc(!sortAsc);
+                  }}
+                  className="py-2.5 px-2.5 cursor-pointer hover:bg-sky-100 transition min-w-[130px] font-bold"
+                  title="Ordenar por CFC"
+                >
+                  CFC ˅
+                </th>
                 <th className="py-2.5 px-2.5 min-w-[90px]">DNI</th>
                 <th
                   onClick={() => {
@@ -322,7 +339,7 @@ export const PersonalView: React.FC<PersonalViewProps> = ({
             <tbody className="divide-y divide-slate-100 bg-white">
               {paginatedWorkers.length === 0 ? (
                 <tr>
-                  <td colSpan={6 + days.length} className="py-10 text-center text-slate-400 text-xs">
+                  <td colSpan={7 + days.length} className="py-10 text-center text-slate-400 text-xs">
                     Sin resultados
                   </td>
                 </tr>
@@ -335,6 +352,12 @@ export const PersonalView: React.FC<PersonalViewProps> = ({
                   >
                     <td className="py-2 px-3.5 font-medium text-slate-800 group-hover:text-emerald-700">
                       {w.name}
+                    </td>
+
+                    <td className="py-2 px-2.5 font-sans">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/80">
+                        {w.cfc || w.area || 'Sin Asignar'}
+                      </span>
                     </td>
 
                     <td className="py-2 px-2.5 text-slate-400 font-mono text-[11px]">
