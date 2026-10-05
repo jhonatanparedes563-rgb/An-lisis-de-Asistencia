@@ -35,17 +35,17 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
   const lastDay = kpis.lastDayLoaded;
 
   const absentLastDayWorkers = useMemo(() => {
-    if (days.length < 2 || !lastDay) return [];
+    if (days.length === 0 || !lastDay) return [];
     return workers
       .filter((w) => {
-        const lastRec = w.history[w.history.length - 1];
+        const lastRec = w.history.find((h) => h.date === lastDay.date);
         return lastRec && !lastRec.attended;
       })
       .slice(0, 8);
   }, [workers, days.length, lastDay]);
 
   const topAbsentWorkers = useMemo(() => {
-    if (days.length < 2) return [];
+    if (days.length === 0) return [];
     return [...workers]
       .filter((w) => w.absentDaysCount > 0)
       .sort((a, b) => b.absentDaysCount - a.absentDaysCount)
@@ -156,7 +156,7 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
       </div>
 
       {/* Absent Last Day Section */}
-      {days.length >= 2 && lastDay && lastDay.absentCount > 0 && (
+      {days.length >= 1 && lastDay && lastDay.absentCount > 0 && (
         <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-2.5">
           <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
             <div className="flex items-center gap-1.5">

@@ -24,6 +24,12 @@ import { DatosView } from './components/DatosView';
 import { AIModelsView } from './components/AIModelsView';
 import { WorkerDetailModal } from './components/WorkerDetailModal';
 import { CargarExcelModal } from './components/CargarExcelModal';
+import { GlobalFilterBar } from './components/GlobalFilterBar';
+import {
+  extractAvailableWeeks,
+  filterAttendanceData,
+  GlobalFilterState,
+} from './utils/filterUtils';
 import * as XLSX from 'xlsx';
 
 export function App() {
@@ -34,6 +40,13 @@ export function App() {
   const [selectedGroupColumn, setSelectedGroupColumn] = useState<string>('');
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isLoadedFromStorage, setIsLoadedFromStorage] = useState(false);
+
+  // Global Attendance Filters (Día, Semana, Estado)
+  const [globalFilter, setGlobalFilter] = useState<GlobalFilterState>({
+    week: 'all',
+    date: 'all',
+    status: 'all',
+  });
 
   // Load previously saved batches from IndexedDB
   useEffect(() => {
@@ -55,6 +68,46 @@ export function App() {
   const { cfcList, bestCfc, worstCfc, totalCfcs, availableColumns } = useMemo(() => {
     return computeCFCAttendanceMatrix(workers, daysEvolution, rawRowsByDate, selectedGroupColumn);
   }, [workers, daysEvolution, rawRowsByDate, selectedGroupColumn]);
+
+  // Extract available weeks
+  const availableWeeks = useMemo(() => {
+    return extractAvailableWeeks(daysEvolution);
+  }, [daysEvolution]);
+
+  // Filter attendance data across all modules
+  const {
+    filteredWorkers,
+    filteredDays,
+    filteredCfcList,
+    filteredKpis,
+    isFilterActive,
+  } = useMemo(() => {
+    return filterAttendanceData(
+      workers,
+      daysEvolution,
+      cfcList,
+      globalFilter,
+      availableWeeks
+    );
+  }, [workers, daysEvolution, cfcList, globalFilter, availableWeeks]);
+
+  const filteredBestCfc = useMemo(() => {
+    if (filteredCfcList.length === 0) return null;
+    return [...filteredCfcList].sort((a, b) => b.attendanceRate - a.attendanceRate)[0] || null;
+  }, [filteredCfcList]);
+
+  const filteredWorstCfc = useMemo(() => {
+    if (filteredCfcList.length === 0) return null;
+    return [...filteredCfcList].sort((a, b) => a.attendanceRate - b.attendanceRate)[0] || null;
+  }, [filteredCfcList]);
+
+  const handleResetFilters = () => {
+    setGlobalFilter({
+      week: 'all',
+      date: 'all',
+      status: 'all',
+    });
+  };
 
   // Handle Loading new file(s)
   const handleBatchLoaded = (
@@ -149,7 +202,7 @@ export function App() {
         onSelectView={setActiveTab}
         onOpenUpload={() => setIsUploadModalOpen(true)}
         onExportExcel={handleExportExcel}
-        kpis={kpis}
+        kpis={filteredKpis}
       />
 
       {/* Main Content Area */}
@@ -158,16 +211,32 @@ export function App() {
         <Header
           currentView={activeTab}
           onOpenUpload={() => setIsUploadModalOpen(true)}
-          kpis={kpis}
+          kpis={filteredKpis}
         />
+
+        {/* Global Attendance Filter Bar (Día, Semana, Estado) */}
+        {daysEvolution.length > 0 && (
+          <GlobalFilterBar
+            weeks={availableWeeks}
+            days={daysEvolution}
+            filter={globalFilter}
+            onFilterChange={setGlobalFilter}
+            onReset={handleResetFilters}
+            isFilterActive={isFilterActive}
+            totalWorkersCount={workers.length}
+            filteredWorkersCount={filteredWorkers.length}
+            totalDaysCount={daysEvolution.length}
+            filteredDaysCount={filteredDays.length}
+          />
+        )}
 
         {/* Active Tab View */}
         <main className="flex-1 overflow-y-auto">
           {activeTab === 'resumen' && (
             <ResumenView
-              kpis={kpis}
-              workers={workers}
-              days={daysEvolution}
+              kpis={filteredKpis}
+              workers={filteredWorkers}
+              days={filteredDays}
               onSelectWorker={setSelectedWorker}
               onGoToView={setActiveTab}
               onOpenUpload={() => setIsUploadModalOpen(true)}
@@ -176,8 +245,8 @@ export function App() {
 
           {activeTab === 'personal' && (
             <PersonalView
-              workers={workers}
-              days={daysEvolution}
+              workers={filteredWorkers}
+              days={filteredDays}
               onSelectWorker={setSelectedWorker}
               onGoToCFCView={() => setActiveTab('cfc')}
             />
@@ -185,10 +254,10 @@ export function App() {
 
           {activeTab === 'cfc' && (
             <CFCView
-              cfcList={cfcList}
-              bestCfc={bestCfc}
-              worstCfc={worstCfc}
-              days={daysEvolution}
+              cfcList={filteredCfcList}
+              bestCfc={filteredBestCfc}
+              worstCfc={filteredWorstCfc}
+              days={filteredDays}
               onSelectWorker={setSelectedWorker}
               onGoToPersonalView={() => setActiveTab('personal')}
               availableColumns={availableColumns}
@@ -199,17 +268,17 @@ export function App() {
 
           {activeTab === 'evolucion' && (
             <EvolucionView
-              days={daysEvolution}
-              kpis={kpis}
-              cfcList={cfcList}
+              days={filteredDays}
+              kpis={filteredKpis}
+              cfcList={filteredCfcList}
             />
           )}
 
           {activeTab === 'ai' && (
             <AIModelsView
-              workers={workers}
-              days={daysEvolution}
-              cfcList={cfcList}
+              workers={filteredWorkers}
+              days={filteredDays}
+              cfcList={filteredCfcList}
               onSelectWorker={setSelectedWorker}
             />
           )}
