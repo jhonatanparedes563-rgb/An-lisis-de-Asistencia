@@ -398,8 +398,9 @@ export function computeStochasticForecast(
     };
   }
 
-  // Count how many attended on the last available day
-  const lastDay = days[days.length - 1];
+  // Count how many attended on the last available day that had staff
+  const daysWithStaff = days.filter((d) => d.workersWorkingCount > 0);
+  const lastDay = daysWithStaff.length > 0 ? daysWithStaff[daysWithStaff.length - 1] : days[days.length - 1];
   const lastWorkingCount = lastDay ? lastDay.workersWorkingCount : 0;
   const lastAbsentCount = Math.max(0, totalUniverse - lastWorkingCount);
 
@@ -460,19 +461,25 @@ export function computeCFCForecasts(
 ): CFCForecastItem[] {
   return cfcList
     .map((c) => {
-      const lastDayHistory = c.history.length > 0 ? c.history[c.history.length - 1] : null;
-      const lastDayPresent = lastDayHistory ? lastDayHistory.presentCount : c.dailyAverage;
-      const universe = c.totalWorkersAssigned || lastDayPresent;
-      const absent = Math.max(0, universe - lastDayPresent);
+      // Find the last day that actually HAD personnel (presentCount > 0 and not DT)
+      const daysWithPersonnel = c.history.filter((h) => !h.isDT && h.presentCount > 0);
+      const lastDayWithStaff = daysWithPersonnel.length > 0
+        ? daysWithPersonnel[daysWithPersonnel.length - 1]
+        : null;
+
+      // Base personnel count: Use the last day that had staff to make a realistic projection
+      const basePresent = lastDayWithStaff ? lastDayWithStaff.presentCount : c.dailyAverage;
+      const universe = c.totalWorkersAssigned || basePresent;
+      const absent = Math.max(0, universe - basePresent);
 
       // CFC-specific Bayesian-adjusted transition rates
       const cfcFidelity = c.attendanceRate / 100;
       const pAA = Math.min(0.99, Math.max(0.70, (markov.p_attend_attend + cfcFidelity) / 2));
       const pAF = Math.min(0.50, Math.max(0.15, (markov.p_attend_absent + (1 - cfcFidelity) * 0.5) / 2));
 
-      const rawPredicted = (lastDayPresent * pAA + absent * pAF) * seasonalityMultiplier;
+      const rawPredicted = (basePresent * pAA + absent * pAF) * seasonalityMultiplier;
       const predicted = Math.min(universe, Math.max(0, Math.round(rawPredicted)));
-      const expectedDelta = predicted - lastDayPresent;
+      const expectedDelta = predicted - basePresent;
       const expectedRate = universe > 0 ? Number(((predicted / universe) * 100).toFixed(1)) : 100;
 
       let trend: 'SUBE' | 'BAJA' | 'ESTABLE' = 'ESTABLE';
@@ -481,7 +488,7 @@ export function computeCFCForecasts(
 
       return {
         cfcName: c.cfcName,
-        lastDayPresent,
+        lastDayPresent: basePresent,
         dailyAverage: c.dailyAverage,
         predictedAttendance: predicted,
         expectedDelta,
@@ -490,6 +497,6 @@ export function computeCFCForecasts(
         history: c.history,
       };
     })
-    .sort((a, b) => b.predictedAttendance - a.predictedAttendance);
+    .sort((a, b) => a.predictedAttendance - b.predictedAttendance); // Orden por defecto: de menor a mayor
 }
 

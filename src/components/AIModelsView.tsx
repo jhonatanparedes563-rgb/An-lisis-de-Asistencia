@@ -9,6 +9,9 @@ import {
   Loader2,
   RefreshCw,
   Sliders,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import {
   CFCAttendanceSummary,
@@ -41,6 +44,8 @@ export const AIModelsView: React.FC<AIModelsViewProps> = ({
   const [riskFilter, setRiskFilter] = useState<'ALL' | 'CRITICO' | 'MODERADO' | 'BAJO'>('CRITICO');
   const [searchRisk, setSearchRisk] = useState('');
   const [searchCfcForecast, setSearchCfcForecast] = useState('');
+  const [cfcSortField, setCfcSortField] = useState<'predicted' | 'cfc' | 'delta' | 'rate'>('predicted');
+  const [cfcSortAsc, setCfcSortAsc] = useState<boolean>(true); // Por defecto: de menor a mayor
 
   const [aiReport, setAiReport] = useState<string | null>(null);
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
@@ -81,10 +86,35 @@ export const AIModelsView: React.FC<AIModelsViewProps> = ({
   }, [cfcList, markov, learnedPatterns.nextDaySeasonalityMultiplier]);
 
   const filteredCfcForecasts = useMemo(() => {
-    if (!searchCfcForecast.trim()) return cfcForecasts;
-    const q = searchCfcForecast.toLowerCase().trim();
-    return cfcForecasts.filter((c) => c.cfcName.toLowerCase().includes(q));
-  }, [cfcForecasts, searchCfcForecast]);
+    let list = cfcForecasts;
+    if (searchCfcForecast.trim()) {
+      const q = searchCfcForecast.toLowerCase().trim();
+      list = list.filter((c) => c.cfcName.toLowerCase().includes(q));
+    }
+
+    return [...list].sort((a, b) => {
+      let comp = 0;
+      if (cfcSortField === 'predicted') {
+        comp = a.predictedAttendance - b.predictedAttendance;
+      } else if (cfcSortField === 'cfc') {
+        comp = a.cfcName.localeCompare(b.cfcName, undefined, { numeric: true });
+      } else if (cfcSortField === 'delta') {
+        comp = a.expectedDelta - b.expectedDelta;
+      } else if (cfcSortField === 'rate') {
+        comp = a.expectedRate - b.expectedRate;
+      }
+      return cfcSortAsc ? comp : -comp;
+    });
+  }, [cfcForecasts, searchCfcForecast, cfcSortField, cfcSortAsc]);
+
+  const handleToggleCfcSort = (field: 'predicted' | 'cfc' | 'delta' | 'rate') => {
+    if (cfcSortField === field) {
+      setCfcSortAsc(!cfcSortAsc);
+    } else {
+      setCfcSortField(field);
+      setCfcSortAsc(true); // de menor a mayor por defecto
+    }
+  };
 
   // Filtered Risk Table
   const filteredPredictions = useMemo(() => {
@@ -504,18 +534,64 @@ Estructura:
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="bg-[#E0F2FE] text-[#0369A1] font-semibold text-[11px] sticky top-0 z-10 shadow-2xs">
                   <tr>
-                    <th className="py-2.5 px-3.5 min-w-[170px]">CFC</th>
+                    <th
+                      onClick={() => handleToggleCfcSort('cfc')}
+                      className="py-2.5 px-3.5 min-w-[170px] cursor-pointer hover:bg-sky-200/60 transition select-none"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span>CFC</span>
+                        {cfcSortField === 'cfc' ? (
+                          cfcSortAsc ? <ArrowUp className="w-3 h-3 text-sky-800" /> : <ArrowDown className="w-3 h-3 text-sky-800" />
+                        ) : (
+                          <ArrowUpDown className="w-3 h-3 text-sky-400 opacity-60" />
+                        )}
+                      </div>
+                    </th>
                     {days.map((d) => (
                       <th key={d.date} className="py-2.5 px-2.5 text-center min-w-[85px]">
                         <div>{d.formattedDate}</div>
                         <div className="text-[10px] text-sky-800 font-normal">{d.dayName.slice(0, 3)}</div>
                       </th>
                     ))}
-                    <th className="py-2.5 px-2.5 text-center min-w-[95px] bg-emerald-100/70 text-emerald-950 font-bold border-l border-r border-emerald-200">
-                      Proyectado
+                    <th
+                      onClick={() => handleToggleCfcSort('predicted')}
+                      className="py-2.5 px-2.5 text-center min-w-[95px] bg-emerald-100/70 text-emerald-950 font-bold border-l border-r border-emerald-200 cursor-pointer hover:bg-emerald-200/80 transition select-none"
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Proyectado</span>
+                        {cfcSortField === 'predicted' ? (
+                          cfcSortAsc ? <ArrowUp className="w-3 h-3 text-emerald-900" /> : <ArrowDown className="w-3 h-3 text-emerald-900" />
+                        ) : (
+                          <ArrowUpDown className="w-3 h-3 text-emerald-600 opacity-60" />
+                        )}
+                      </div>
                     </th>
-                    <th className="py-2.5 px-2 text-center min-w-[70px]">Variación</th>
-                    <th className="py-2.5 px-3 text-right min-w-[80px]">% Proyectado</th>
+                    <th
+                      onClick={() => handleToggleCfcSort('delta')}
+                      className="py-2.5 px-2.5 text-center min-w-[70px] cursor-pointer hover:bg-sky-200/60 transition select-none"
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Variación</span>
+                        {cfcSortField === 'delta' ? (
+                          cfcSortAsc ? <ArrowUp className="w-3 h-3 text-sky-800" /> : <ArrowDown className="w-3 h-3 text-sky-800" />
+                        ) : (
+                          <ArrowUpDown className="w-3 h-3 text-sky-400 opacity-60" />
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      onClick={() => handleToggleCfcSort('rate')}
+                      className="py-2.5 px-3 text-right min-w-[80px] cursor-pointer hover:bg-sky-200/60 transition select-none"
+                    >
+                      <div className="flex items-center justify-end gap-1">
+                        <span>% Proyectado</span>
+                        {cfcSortField === 'rate' ? (
+                          cfcSortAsc ? <ArrowUp className="w-3 h-3 text-sky-800" /> : <ArrowDown className="w-3 h-3 text-sky-800" />
+                        ) : (
+                          <ArrowUpDown className="w-3 h-3 text-sky-400 opacity-60" />
+                        )}
+                      </div>
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 bg-white">
@@ -535,9 +611,22 @@ Estructura:
                         {/* Asistencia día a día */}
                         {days.map((d) => {
                           const h = c.history.find((item) => item.date === d.date);
+                          const isDT = !h || (h as any).isDT || h.presentCount === 0;
+
                           return (
-                            <td key={d.date} className="py-2 px-2.5 text-center font-mono text-slate-700 font-semibold">
-                              {h ? h.presentCount.toLocaleString() : '-'}
+                            <td key={d.date} className="py-2 px-2.5 text-center font-mono">
+                              {isDT ? (
+                                <span
+                                  className="inline-block px-2 py-0.5 rounded text-[11px] font-bold bg-sky-50 text-sky-700 border border-sky-200"
+                                  title="Día de Turno / Descanso programado (DT). El proyectado tomó personal de un día activo."
+                                >
+                                  DT
+                                </span>
+                              ) : (
+                                <span className="text-slate-700 font-semibold text-xs">
+                                  {h.presentCount.toLocaleString()}
+                                </span>
+                              )}
                             </td>
                           );
                         })}
@@ -548,7 +637,7 @@ Estructura:
                         </td>
 
                         {/* Variación */}
-                        <td className="py-2 px-2 text-center font-mono font-semibold text-xs">
+                        <td className="py-2 px-2.5 text-center font-mono font-semibold text-xs">
                           {c.expectedDelta > 0 ? (
                             <span className="text-emerald-600 font-bold">+{c.expectedDelta}</span>
                           ) : c.expectedDelta < 0 ? (

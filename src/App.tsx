@@ -201,6 +201,7 @@ export function App() {
             <EvolucionView
               days={daysEvolution}
               kpis={kpis}
+              cfcList={cfcList}
             />
           )}
 
