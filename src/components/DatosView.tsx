@@ -220,10 +220,8 @@ export const DatosView: React.FC<DatosViewProps> = ({
                     <td className="py-1.5 px-3 font-medium text-slate-800">
                       {r.workerName}
                     </td>
-                    <td className="py-1.5 px-3">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/80">
-                        {r.cfc || r.area || 'Sin Asignar'}
-                      </span>
+                    <td className="py-1.5 px-3 font-mono text-slate-700 font-medium">
+                      {r.cfc || r.area || 'Sin Asignar'}
                     </td>
                     <td className="py-1.5 px-3 text-slate-400 font-mono text-[11px]">
                       {r.dni || '-'}

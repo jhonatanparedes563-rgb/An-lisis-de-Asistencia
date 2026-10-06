@@ -377,10 +377,8 @@ export const PersonalView: React.FC<PersonalViewProps> = ({
                       {w.name}
                     </td>
 
-                    <td className="py-2 px-2.5 font-sans">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/80">
-                        {w.cfc || w.area || 'Sin Asignar'}
-                      </span>
+                    <td className="py-2 px-2.5 font-mono text-slate-700 font-medium">
+                      {w.cfc || w.area || 'Sin Asignar'}
                     </td>
 
                     <td className="py-2 px-2.5 text-slate-400 font-mono text-[11px]">

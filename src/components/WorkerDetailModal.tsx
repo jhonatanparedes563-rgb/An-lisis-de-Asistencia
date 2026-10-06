@@ -37,7 +37,7 @@ export const WorkerDetailModal: React.FC<WorkerDetailModalProps> = ({ worker, on
                 )}
                 <span>•</span>
                 <span>
-                  CFC: <strong className="text-emerald-800 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded font-bold">{worker.cfc || worker.area || 'Sin Asignar'}</strong>
+                  CFC: <strong className="font-bold text-slate-800">{worker.cfc || worker.area || 'Sin Asignar'}</strong>
                 </span>
                 {worker.area && worker.area !== worker.cfc && (
                   <>
@@ -130,10 +130,8 @@ export const WorkerDetailModal: React.FC<WorkerDetailModalProps> = ({ worker, on
                     <td className="py-2.5 px-3 text-slate-600 font-sans">
                       {h.dayName}
                     </td>
-                    <td className="py-2.5 px-3 text-center font-mono">
-                      <span className="inline-block px-2 py-0.5 rounded text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                        {h.cfc || worker.cfc || 'Sin Asignar'}
-                      </span>
+                    <td className="py-2.5 px-3 text-center font-mono font-medium text-slate-700">
+                      {h.cfc || worker.cfc || 'Sin Asignar'}
                     </td>
                     <td className="py-2.5 px-3.5 text-center">
                       {h.isInactive ? (

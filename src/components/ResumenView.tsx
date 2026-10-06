@@ -207,10 +207,8 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
                     className="hover:bg-slate-50 cursor-pointer transition"
                   >
                     <td className="py-1.5 px-3 font-medium text-slate-800">{w.name}</td>
-                    <td className="py-1.5 px-2">
-                      <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/80">
-                        {w.cfc || w.area || 'Sin Asignar'}
-                      </span>
+                    <td className="py-1.5 px-2 font-mono text-slate-700 font-medium">
+                      {w.cfc || w.area || 'Sin Asignar'}
                     </td>
                     <td className="py-1.5 px-2 text-slate-400 font-mono text-[11px]">{w.dni || '-'}</td>
                     <td className="py-1.5 px-2 text-right font-mono text-emerald-600 font-semibold">
@@ -273,10 +271,8 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
                       className="hover:bg-slate-50 cursor-pointer transition"
                     >
                       <td className="py-1.5 px-3 font-medium text-slate-800">{w.name}</td>
-                      <td className="py-1.5 px-2">
-                        <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/80">
-                          {w.cfc || w.area || 'Sin Asignar'}
-                        </span>
+                      <td className="py-1.5 px-2 font-mono text-slate-700 font-medium">
+                        {w.cfc || w.area || 'Sin Asignar'}
                       </td>
                       <td className="py-1.5 px-2 text-right font-mono text-emerald-600 font-semibold">
                         {w.attendedDaysCount}d
