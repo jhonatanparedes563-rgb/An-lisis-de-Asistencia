@@ -8,7 +8,8 @@ const NAME_SYNONYMS = [
 ];
 
 const DNI_SYNONYMS = [
-  'dni', 'cod.empleado', 'cod empleado', 'codempleado', 'codigo', 'código',
+  'cod.empleado', 'cod empleado', 'codempleado', 'codigo empleado', 'codigoempleado',
+  'cod. empleado', 'cod_empleado', 'dni', 'codigo', 'código',
   'cod', 'doc', 'documento', 'fotocheck', 'fotochek', 'id', 'identificacion'
 ];
 
@@ -18,10 +19,12 @@ const DATE_SYNONYMS = [
 ];
 
 const AREA_SYNONYMS = [
-  'area', 'área', 'departamento', 'seccion', 'sección', 'gerencia', 'labor', 'actividad'
+  'actividad', 'subactividad', 'area', 'área', 'departamento', 'seccion', 'sección', 'gerencia', 'labor'
 ];
 
 export const CFC_SYNONYMS = [
+  'codigo cadena', 'código cadena', 'cod. cadena', 'cod cadena', 'cod.cadena', 'codcadena',
+  'codigo_cadena', 'cadena', 'cadena cfc', 'cfc cadena', 'cod cadena cfc',
   'cfc', 'c.f.c', 'c.f.c.', 'c_f_c', 'cfcs', 'cfc_cod', 'cfc_nombre',
   'centro de costo', 'ceco', 'c_costo', 'centro_costo', 'centro costo',
   'centro_de_costo', 'ce_co'
@@ -29,10 +32,10 @@ export const CFC_SYNONYMS = [
 
 /**
  * Specifically finds the column header representing CFC with absolute priority
- * over Area, Labor, etc.
+ * over Area, Labor, Fundo, etc.
  */
 export function findCfcHeader(headers: string[]): string | null {
-  // 1. Strict match for explicit CFC
+  // 1. Strict match for explicit CFC or Código Cadena / Cadena
   for (const h of headers) {
     const norm = normalizeHeader(h);
     if (
@@ -44,7 +47,13 @@ export function findCfcHeader(headers: string[]): string | null {
       norm === 'cfcnombre' ||
       norm === 'cfcdescripcion' ||
       norm.startsWith('cfc') ||
-      norm.endsWith('cfc')
+      norm.endsWith('cfc') ||
+      norm === 'codigocadena' ||
+      norm === 'codcadena' ||
+      norm === 'cadena' ||
+      norm.includes('codigocadena') ||
+      norm.includes('codcadena') ||
+      norm.includes('cadena')
     ) {
       return h;
     }
@@ -66,8 +75,8 @@ export function findCfcHeader(headers: string[]): string | null {
     }
   }
 
-  // 3. Fallback only if no explicit CFC column exists
-  const fallbackSyns = ['cuadrilla', 'modulo', 'módulo', 'fundo', 'campo', 'lote'];
+  // 3. Fallback only if no explicit CFC or Cadena column exists
+  const fallbackSyns = ['cuadrilla', 'modulo', 'módulo', 'lote'];
   for (const h of headers) {
     const norm = normalizeHeader(h);
     for (const syn of fallbackSyns) {
@@ -77,13 +86,21 @@ export function findCfcHeader(headers: string[]): string | null {
     }
   }
 
+  // 4. Last resort fallback
+  for (const h of headers) {
+    const norm = normalizeHeader(h);
+    if (norm === 'fundo' || norm === 'campo') {
+      return h;
+    }
+  }
+
   return null;
 }
 
 export function extractCfcFromRow(rawRow?: Record<string, any>, fallback?: string): string {
   if (!rawRow) return fallback || 'CFC General';
 
-  // 1. Strict search: exact 'cfc', 'c.f.c'
+  // 1. Strict search: exact 'cfc', 'c.f.c', 'código cadena', 'cadena'
   for (const [key, val] of Object.entries(rawRow)) {
     const normKey = normalizeHeader(key);
     if (
@@ -93,7 +110,13 @@ export function extractCfcFromRow(rawRow?: Record<string, any>, fallback?: strin
       normKey === 'cfccod' ||
       normKey === 'cfcnombre' ||
       normKey.startsWith('cfc') ||
-      normKey.endsWith('cfc')
+      normKey.endsWith('cfc') ||
+      normKey === 'codigocadena' ||
+      normKey === 'codcadena' ||
+      normKey === 'cadena' ||
+      normKey.includes('codigocadena') ||
+      normKey.includes('codcadena') ||
+      normKey.includes('cadena')
     ) {
       const sVal = String(val || '').trim();
       if (sVal) return sVal;
@@ -114,14 +137,23 @@ export function extractCfcFromRow(rawRow?: Record<string, any>, fallback?: strin
     }
   }
 
-  // 3. Fallback: Cuadrilla / Modulo / Fundo
+  // 3. Fallback: Cuadrilla / Modulo / Lote
   for (const [key, val] of Object.entries(rawRow)) {
     const normKey = normalizeHeader(key);
     if (
       normKey.includes('cuadrilla') ||
       normKey.includes('modulo') ||
-      normKey.includes('fundo')
+      normKey.includes('lote')
     ) {
+      const sVal = String(val || '').trim();
+      if (sVal) return sVal;
+    }
+  }
+
+  // 4. Last resort: Fundo
+  for (const [key, val] of Object.entries(rawRow)) {
+    const normKey = normalizeHeader(key);
+    if (normKey === 'fundo' || normKey === 'campo') {
       const sVal = String(val || '').trim();
       if (sVal) return sVal;
     }
