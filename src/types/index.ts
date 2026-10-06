@@ -37,6 +37,7 @@ export interface WorkerAttendanceSummary {
     attended: boolean;
     isDT?: boolean; // Scheduled rest day for the worker's CFC
     isInactive?: boolean; // Not part of this week's workforce
+    cfc?: string; // CFC where the worker was on this date
   }[];
 }
 

@@ -59,6 +59,7 @@ export function computeAttendanceMatrix(
   }
 
   // 1. Build lookup for CFC strictly from rawRowsByDate and count attendance per CFC per date
+  const rawWorkerMapByDate = new Map<string, string>(); // `${lookupKey}||${date}` -> cfcVal
   const workerCfcLookup = new Map<string, string>();
   const cfcAttendanceByDate = new Map<string, number>();
 
@@ -69,10 +70,19 @@ export function computeAttendanceMatrix(
         const extracted = extractCfcFromRow(r.rawRow);
         const cfcVal = extracted !== 'CFC General' ? extracted : (r.cfc || undefined);
         if (cfcVal && cfcVal !== 'CFC General') {
-          if (r.dni) workerCfcLookup.set(r.dni.trim().toLowerCase(), cfcVal);
-          if (r.workerName) workerCfcLookup.set(r.workerName.trim().toLowerCase(), cfcVal);
+          const trimmedCfc = cfcVal.trim();
+          if (r.dni) {
+            const dniKey = r.dni.trim().toLowerCase();
+            workerCfcLookup.set(dniKey, trimmedCfc);
+            rawWorkerMapByDate.set(`${dniKey}||${date}`, trimmedCfc);
+          }
+          if (r.workerName) {
+            const nameKey = r.workerName.trim().toLowerCase();
+            workerCfcLookup.set(nameKey, trimmedCfc);
+            rawWorkerMapByDate.set(`${nameKey}||${date}`, trimmedCfc);
+          }
 
-          const cfcKey = `${cfcVal.trim().toLowerCase()}||${date}`;
+          const cfcKey = `${trimmedCfc.toLowerCase()}||${date}`;
           cfcAttendanceByDate.set(cfcKey, (cfcAttendanceByDate.get(cfcKey) || 0) + 1);
         }
       });
@@ -89,6 +99,7 @@ export function computeAttendanceMatrix(
       cfc?: string;
       attendedDates: Set<string>;
       activeWeeks: Set<string>;
+      cfcByDate: Map<string, string>;
     }
   >();
 
@@ -104,14 +115,20 @@ export function computeAttendanceMatrix(
 
       const lookupKey = keyId ? keyId.trim().toLowerCase() : name.trim().toLowerCase();
 
-      // Determine CFC strictly from the CFC column
+      // Determine CFC for this day strictly from date-specific records, explicitCfc, or lookup
       let resolvedCfc: string | undefined = undefined;
-      if (keyId && workerCfcLookup.has(keyId.trim().toLowerCase())) {
+      if (rawWorkerMapByDate.has(`${lookupKey}||${batch.date}`)) {
+        resolvedCfc = rawWorkerMapByDate.get(`${lookupKey}||${batch.date}`);
+      } else if (keyId && rawWorkerMapByDate.has(`${keyId.trim().toLowerCase()}||${batch.date}`)) {
+        resolvedCfc = rawWorkerMapByDate.get(`${keyId.trim().toLowerCase()}||${batch.date}`);
+      } else if (name && rawWorkerMapByDate.has(`${name.trim().toLowerCase()}||${batch.date}`)) {
+        resolvedCfc = rawWorkerMapByDate.get(`${name.trim().toLowerCase()}||${batch.date}`);
+      } else if (explicitCfc && explicitCfc.trim() && explicitCfc !== 'CFC General') {
+        resolvedCfc = explicitCfc.trim();
+      } else if (keyId && workerCfcLookup.has(keyId.trim().toLowerCase())) {
         resolvedCfc = workerCfcLookup.get(keyId.trim().toLowerCase());
       } else if (name && workerCfcLookup.has(name.trim().toLowerCase())) {
         resolvedCfc = workerCfcLookup.get(name.trim().toLowerCase());
-      } else if (explicitCfc && explicitCfc.trim() && explicitCfc !== 'CFC General') {
-        resolvedCfc = explicitCfc.trim();
       }
 
       if (!workerRegistry.has(lookupKey)) {
@@ -122,6 +139,7 @@ export function computeAttendanceMatrix(
           cfc: resolvedCfc || undefined,
           attendedDates: new Set(),
           activeWeeks: new Set(),
+          cfcByDate: new Map(),
         });
       } else {
         const existing = workerRegistry.get(lookupKey)!;
@@ -133,8 +151,12 @@ export function computeAttendanceMatrix(
         }
       }
 
-      workerRegistry.get(lookupKey)!.attendedDates.add(batch.date);
-      workerRegistry.get(lookupKey)!.activeWeeks.add(batchWeek);
+      const reg = workerRegistry.get(lookupKey)!;
+      reg.attendedDates.add(batch.date);
+      reg.activeWeeks.add(batchWeek);
+      if (resolvedCfc) {
+        reg.cfcByDate.set(batch.date, resolvedCfc);
+      }
     });
   });
 
@@ -222,6 +244,9 @@ export function computeAttendanceMatrix(
       const isWeekActive = val.activeWeeks.has(batchWeek);
       const attended = val.attendedDates.has(batch.date);
 
+      // CFC en este día específico (o el asignado a su cuadrilla si faltó o descansó)
+      const cfcOnDate = val.cfcByDate.get(batch.date) || val.cfc || 'Sin Asignar';
+
       if (!isWeekActive) {
         // The worker was NOT part of this week's cohort (rotated out or hired later)
         return {
@@ -231,6 +256,7 @@ export function computeAttendanceMatrix(
           attended: false,
           isDT: false,
           isInactive: true,
+          cfc: cfcOnDate,
         };
       }
 
@@ -238,8 +264,9 @@ export function computeAttendanceMatrix(
 
       // Rule: If the worker's CFC had 0 workers on this date, the whole CFC had DT (Descanso programado)
       let isDT = false;
-      if (workerCfcKey) {
-        const cfcAttendanceToday = cfcAttendanceByDate.get(`${workerCfcKey}||${batch.date}`) || 0;
+      const currentCfcKey = (cfcOnDate && cfcOnDate !== 'Sin Asignar') ? cfcOnDate.trim().toLowerCase() : workerCfcKey;
+      if (currentCfcKey) {
+        const cfcAttendanceToday = cfcAttendanceByDate.get(`${currentCfcKey}||${batch.date}`) || 0;
         if (cfcAttendanceToday === 0) {
           isDT = true;
         }
@@ -258,6 +285,7 @@ export function computeAttendanceMatrix(
         attended,
         isDT,
         isInactive: false,
+        cfc: cfcOnDate,
       };
     });
 

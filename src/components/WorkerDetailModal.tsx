@@ -18,7 +18,7 @@ export const WorkerDetailModal: React.FC<WorkerDetailModalProps> = ({ worker, on
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto font-sans">
-      <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200 space-y-4">
+      <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-xl sm:max-w-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200 space-y-4">
         {/* Header */}
         <div className="p-6 bg-slate-50 border-b border-slate-200 flex items-start justify-between">
           <div className="flex items-center gap-3.5">
@@ -115,21 +115,27 @@ export const WorkerDetailModal: React.FC<WorkerDetailModalProps> = ({ worker, on
             <table className="w-full text-left text-xs border-collapse">
               <thead className="bg-[#E0F2FE] text-[#0369A1] font-semibold text-[11px] sticky top-0">
                 <tr>
-                  <th className="py-2.5 px-4">Fecha</th>
-                  <th className="py-2.5 px-4">Día</th>
-                  <th className="py-2.5 px-4 text-center">Asistencia</th>
+                  <th className="py-2.5 px-3.5">Fecha</th>
+                  <th className="py-2.5 px-3">Día</th>
+                  <th className="py-2.5 px-3 text-center">CFC</th>
+                  <th className="py-2.5 px-3.5 text-center">Asistencia</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
                 {worker.history.map((h, i) => (
-                  <tr key={i} className="hover:bg-slate-50">
-                    <td className="py-2.5 px-4 font-mono font-medium text-slate-800">
+                  <tr key={i} className="hover:bg-slate-50 transition">
+                    <td className="py-2.5 px-3.5 font-mono font-medium text-slate-800">
                       {h.formattedDate}
                     </td>
-                    <td className="py-2.5 px-4 text-slate-600 font-sans">
+                    <td className="py-2.5 px-3 text-slate-600 font-sans">
                       {h.dayName}
                     </td>
-                    <td className="py-2.5 px-4 text-center">
+                    <td className="py-2.5 px-3 text-center font-mono">
+                      <span className="inline-block px-2 py-0.5 rounded text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                        {h.cfc || worker.cfc || 'Sin Asignar'}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3.5 text-center">
                       {h.isInactive ? (
                         <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 bg-slate-50 px-2.5 py-0.5 rounded-full border border-slate-200">
                           <span>⚪ No programado esta semana</span>
