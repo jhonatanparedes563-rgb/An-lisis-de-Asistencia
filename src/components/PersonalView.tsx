@@ -47,12 +47,12 @@ export const PersonalView: React.FC<PersonalViewProps> = ({
     } else if (filterType === 'FALTARON_HOY' && lastDate) {
       list = list.filter((w) => {
         const lastEntry = w.history.find((h) => h.date === lastDate);
-        return lastEntry && !lastEntry.attended && !lastEntry.isDT;
+        return lastEntry && !lastEntry.attended && !lastEntry.isDT && !lastEntry.isInactive;
       });
     } else if (filterType === 'EN_DT_HOY' && lastDate) {
       list = list.filter((w) => {
         const lastEntry = w.history.find((h) => h.date === lastDate);
-        return lastEntry && lastEntry.isDT && !lastEntry.attended;
+        return lastEntry && lastEntry.isDT && !lastEntry.attended && !lastEntry.isInactive;
       });
     }
 
@@ -420,7 +420,14 @@ export const PersonalView: React.FC<PersonalViewProps> = ({
 
                       return (
                         <td key={d.date} className="py-2 px-2.5 text-center">
-                          {h?.isDT ? (
+                          {h?.isInactive ? (
+                            <span
+                              className="text-slate-300 font-mono text-[11px]"
+                              title="No pertenecía al personal de esta semana (rotación/baja semanal)"
+                            >
+                              -
+                            </span>
+                          ) : h?.isDT ? (
                             <span
                               className="inline-flex items-center gap-1 text-[11px] font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded border border-sky-200"
                               title="Día de Turno / Descanso programado (DT). No cuenta como falta."

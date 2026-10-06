@@ -14,6 +14,7 @@ import {
   MatrixKPIs,
   WorkerAttendanceSummary,
 } from '../types';
+import { DonutAbsenceChart } from './DonutAbsenceChart';
 
 interface ResumenViewProps {
   kpis: MatrixKPIs;
@@ -39,7 +40,7 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
     return workers
       .filter((w) => {
         const lastRec = w.history.find((h) => h.date === lastDay.date);
-        return lastRec && !lastRec.attended && !lastRec.isDT;
+        return lastRec && !lastRec.attended && !lastRec.isDT && !lastRec.isInactive;
       })
       .slice(0, 8);
   }, [workers, days.length, lastDay]);
@@ -154,6 +155,9 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Gráfico de Donas: Faltas de 1 a 5 Días */}
+      <DonutAbsenceChart workers={workers} />
 
       {/* Absent Last Day Section */}
       {days.length >= 1 && lastDay && lastDay.absentCount > 0 && (

@@ -135,32 +135,57 @@ export function filterAttendanceData(
   // Filter daysEvolution
   const filteredDays = days.filter((d) => activeDates.includes(d.date));
 
-  // 2. Recompute worker attendance metrics strictly for the active dates
-  const computedWorkers: WorkerAttendanceSummary[] = workers.map((w) => {
-    const activeHistory = w.history.filter((h) => activeDates.includes(h.date));
-    const attendedDaysCount = activeHistory.filter((h) => h.attended).length;
-    const absentDaysCount = activeHistory.filter((h) => !h.attended && !h.isDT).length;
-    const dtDaysCount = activeHistory.filter((h) => h.isDT && !h.attended).length;
-    const totalDaysEvaluated = activeDates.length;
-    const evaluatedDaysForRate = attendedDaysCount + absentDaysCount;
-    const attendanceRate =
-      evaluatedDaysForRate > 0
-        ? (attendedDaysCount / evaluatedDaysForRate) * 100
-        : activeHistory.length > 0
-        ? 100
-        : 0;
+  // 2. Filter workers by active weekly cohort
+  let candidateWorkers = workers;
 
-    return {
-      ...w,
-      history: activeHistory,
-      attendedDaysCount,
-      absentDaysCount,
-      dtDaysCount,
-      totalDaysEvaluated,
-      attendanceRate,
-      isPerfect: absentDaysCount === 0 && attendedDaysCount > 0,
-    };
-  });
+  if (filter.date !== 'all') {
+    const targetWeek = getISOWeekInfo(filter.date).id;
+    // Only workers who belong to the active workforce of this week!
+    candidateWorkers = workers.filter(
+      (w) => w.activeWeeks && w.activeWeeks.includes(targetWeek)
+    );
+  } else if (filter.week !== 'all') {
+    // Only workers who belong to the active workforce of this selected week!
+    candidateWorkers = workers.filter(
+      (w) => w.activeWeeks && w.activeWeeks.includes(filter.week)
+    );
+  }
+
+  // Recompute worker attendance metrics strictly for the active dates
+  const computedWorkers: WorkerAttendanceSummary[] = candidateWorkers
+    .map((w) => {
+      const relevantHistory = w.history.filter((h) => activeDates.includes(h.date));
+      const activeDaysInPeriod = relevantHistory.filter((h) => !h.isInactive);
+      const attendedDaysCount = activeDaysInPeriod.filter((h) => h.attended).length;
+      const absentDaysCount = activeDaysInPeriod.filter((h) => !h.attended && !h.isDT).length;
+      const dtDaysCount = activeDaysInPeriod.filter((h) => h.isDT && !h.attended).length;
+      const totalDaysEvaluated = activeDaysInPeriod.length;
+      const evaluatedDaysForRate = attendedDaysCount + absentDaysCount;
+      const attendanceRate =
+        evaluatedDaysForRate > 0
+          ? (attendedDaysCount / evaluatedDaysForRate) * 100
+          : activeDaysInPeriod.length > 0
+          ? 100
+          : 0;
+
+      return {
+        ...w,
+        history: relevantHistory,
+        attendedDaysCount,
+        absentDaysCount,
+        dtDaysCount,
+        totalDaysEvaluated,
+        attendanceRate,
+        isPerfect: absentDaysCount === 0 && attendedDaysCount > 0,
+      };
+    })
+    .filter((w) => {
+      // If filtering by a specific date or week, exclude workers who were not active in this period
+      if (filter.week !== 'all' || filter.date !== 'all') {
+        return w.totalDaysEvaluated > 0;
+      }
+      return true;
+    });
 
   // Filter workers based on status for the active dates
   let filteredWorkers = computedWorkers;

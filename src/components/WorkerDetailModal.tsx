@@ -130,7 +130,11 @@ export const WorkerDetailModal: React.FC<WorkerDetailModalProps> = ({ worker, on
                       {h.dayName}
                     </td>
                     <td className="py-2.5 px-4 text-center">
-                      {h.isDT ? (
+                      {h.isInactive ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 bg-slate-50 px-2.5 py-0.5 rounded-full border border-slate-200">
+                          <span>⚪ No programado esta semana</span>
+                        </span>
+                      ) : h.isDT ? (
                         <span className="inline-flex items-center gap-1 text-[11px] font-bold text-sky-700 bg-sky-50 px-2.5 py-0.5 rounded-full border border-sky-200">
                           <span>🔵 DT (Descanso)</span>
                         </span>

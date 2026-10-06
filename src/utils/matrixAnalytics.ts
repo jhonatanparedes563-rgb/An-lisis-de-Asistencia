@@ -8,6 +8,7 @@ import {
   WorkerAttendanceSummary,
 } from '../types';
 import { extractCfcFromRow } from './excelParser';
+import { getISOWeekInfo } from './filterUtils';
 
 const DAYS_SPANISH = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
@@ -87,10 +88,13 @@ export function computeAttendanceMatrix(
       area?: string;
       cfc?: string;
       attendedDates: Set<string>;
+      activeWeeks: Set<string>;
     }
   >();
 
   sortedBatches.forEach((batch) => {
+    const batchWeek = getISOWeekInfo(batch.date).id;
+
     batch.workerKeys.forEach((key) => {
       const parts = key.split('||');
       const keyId = parts[0] || '';
@@ -117,6 +121,7 @@ export function computeAttendanceMatrix(
           area: area || undefined,
           cfc: resolvedCfc || undefined,
           attendedDates: new Set(),
+          activeWeeks: new Set(),
         });
       } else {
         const existing = workerRegistry.get(lookupKey)!;
@@ -129,6 +134,7 @@ export function computeAttendanceMatrix(
       }
 
       workerRegistry.get(lookupKey)!.attendedDates.add(batch.date);
+      workerRegistry.get(lookupKey)!.activeWeeks.add(batchWeek);
     });
   });
 
@@ -138,19 +144,16 @@ export function computeAttendanceMatrix(
   const daysEvolution: DayEvolutionStat[] = sortedBatches.map((batch) => {
     const { formatted, dayName } = formatISODate(batch.date);
     const workersWorkingCount = batch.workersCount;
+    const batchWeek = getISOWeekInfo(batch.date).id;
 
-    // Count workers who were active in the company on or before this date
+    // Count workers who belong to this week's active workforce
     let activeCohortToday = 0;
     let dtWorkersCount = 0;
     let absentCount = 0;
 
     workerRegistry.forEach((val) => {
-      let firstDate = '';
-      val.attendedDates.forEach((d) => {
-        if (!firstDate || d < firstDate) firstDate = d;
-      });
-
-      if (firstDate && firstDate <= batch.date) {
+      // Only evaluate workers active in this specific week's roster
+      if (val.activeWeeks.has(batchWeek)) {
         activeCohortToday++;
         const attended = val.attendedDates.has(batch.date);
 
@@ -209,12 +212,29 @@ export function computeAttendanceMatrix(
     const attendedDaysCount = val.attendedDates.size;
     let absentDaysCount = 0;
     let dtDaysCount = 0;
+    let totalDaysEvaluated = 0;
 
     const workerCfcKey = val.cfc ? val.cfc.trim().toLowerCase() : '';
 
     const history = sortedBatches.map((batch) => {
       const { formatted, dayName } = formatISODate(batch.date);
+      const batchWeek = getISOWeekInfo(batch.date).id;
+      const isWeekActive = val.activeWeeks.has(batchWeek);
       const attended = val.attendedDates.has(batch.date);
+
+      if (!isWeekActive) {
+        // The worker was NOT part of this week's cohort (rotated out or hired later)
+        return {
+          date: batch.date,
+          formattedDate: formatted,
+          dayName,
+          attended: false,
+          isDT: false,
+          isInactive: true,
+        };
+      }
+
+      totalDaysEvaluated++;
 
       // Rule: If the worker's CFC had 0 workers on this date, the whole CFC had DT (Descanso programado)
       let isDT = false;
@@ -237,12 +257,13 @@ export function computeAttendanceMatrix(
         dayName,
         attended,
         isDT,
+        isInactive: false,
       };
     });
 
-    const evaluatedWorkingDays = Math.max(1, totalDaysLoaded - dtDaysCount);
+    const evaluatedWorkingDays = Math.max(1, totalDaysEvaluated - dtDaysCount);
     const attendanceRate = Math.min(100, (attendedDaysCount / evaluatedWorkingDays) * 100);
-    const isPerfect = absentDaysCount === 0;
+    const isPerfect = absentDaysCount === 0 && attendedDaysCount > 0;
 
     const summary: WorkerAttendanceSummary = {
       key,
@@ -250,12 +271,13 @@ export function computeAttendanceMatrix(
       dni: val.dni,
       area: val.area,
       cfc: val.cfc,
-      totalDaysEvaluated: totalDaysLoaded,
+      totalDaysEvaluated,
       attendedDaysCount,
       absentDaysCount,
       dtDaysCount,
       attendanceRate,
       isPerfect,
+      activeWeeks: Array.from(val.activeWeeks),
       history,
     };
 
@@ -463,25 +485,14 @@ export function computeCFCAttendanceMatrix(
 
       cfcWorkers.forEach((w) => {
         const dayRecord = w.history.find((h) => h.date === d.date);
-        const isPresentToday = !!dayRecord && dayRecord.attended;
-
-        // Earliest appearance of worker in the dataset
-        let firstDate = '';
-        w.history.forEach((h) => {
-          if (h.attended && (!firstDate || h.date < firstDate)) firstDate = h.date;
-        });
-
-        // Worker was active in company on or before this day
-        if (firstDate && firstDate <= d.date) {
+        // Only count workers who belong to this week's workforce (not inactive)
+        if (dayRecord && !dayRecord.isInactive) {
           activeAssignedToday++;
-          if (isPresentToday) {
+          if (dayRecord.attended) {
             presentCount++;
-          } else {
+          } else if (!dayRecord.isDT) {
             absentCount++;
           }
-        } else if (isPresentToday) {
-          activeAssignedToday++;
-          presentCount++;
         }
       });
 

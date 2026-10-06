@@ -29,12 +29,14 @@ export interface WorkerAttendanceSummary {
   dtDaysCount?: number; // Days the worker was on scheduled rest (DT)
   attendanceRate: number; // (attendedDaysCount / totalDaysEvaluated) * 100
   isPerfect: boolean;
+  activeWeeks?: string[]; // ISO week IDs where worker was active (e.g. ['2026-W40', '2026-W41'])
   history: {
     date: string;
     formattedDate: string;
     dayName: string;
     attended: boolean;
     isDT?: boolean; // Scheduled rest day for the worker's CFC
+    isInactive?: boolean; // Not part of this week's workforce
   }[];
 }
 

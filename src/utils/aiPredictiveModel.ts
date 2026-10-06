@@ -760,22 +760,44 @@ export function computeStochasticForecast(
 
   let pointForecast = lastWorkingCount;
 
+  // Si el último día con personal fue Sábado o día con baja asistencia y proyectamos un día de semana (ej. Lunes o Martes),
+  // se recupera hacia la asistencia típica de ese día de la semana aprendida en los datos cargados
+  const sameDayHistorical = days.filter((d) => d.dayName === nextDayOfWeekName && d.workersWorkingCount > 0);
+  const sameDayHistoricalAvg = sameDayHistorical.length > 0
+    ? Math.round(sameDayHistorical.reduce((sum, d) => sum + d.workersWorkingCount, 0) / sameDayHistorical.length)
+    : 0;
+
+  const maxHistoricalWorkingCount = daysWithStaff.length > 0
+    ? Math.max(...daysWithStaff.map((d) => d.workersWorkingCount))
+    : lastWorkingCount;
+
   if (isPostPayday) {
     // Sábado pos-quincena: contracción por cobro salarial (-12%)
     pointForecast = Math.min(totalUniverse, Math.max(1, Math.round(lastWorkingCount * 0.88)));
   } else if (nextDayOfWeekName === 'Martes') {
-    // Martes sube: recuperación de cuadrillas tras el bajón del lunes
-    const returnees = Math.round(lastAbsentCount * 0.55);
-    pointForecast = Math.min(totalUniverse, lastWorkingCount + Math.max(0, returnees));
+    // Martes sube: recuperación plena hacia el rango de la fecha más alta
+    if (sameDayHistoricalAvg > 0) {
+      pointForecast = Math.max(sameDayHistoricalAvg, Math.round(0.95 * maxHistoricalWorkingCount));
+    } else {
+      const gap = maxHistoricalWorkingCount - lastWorkingCount;
+      pointForecast = lastWorkingCount + Math.round(gap * 0.90);
+    }
   } else if (nextDayOfWeekName === 'Lunes') {
-    // Lunes: ligera contracción de inicio de semana (-4%)
-    pointForecast = Math.min(totalUniverse, Math.max(1, Math.round(lastWorkingCount * 0.96)));
+    // Lunes: recuperación activa hacia el rango operativo del CFC
+    if (sameDayHistoricalAvg > 0) {
+      pointForecast = Math.max(sameDayHistoricalAvg, Math.round(0.92 * maxHistoricalWorkingCount));
+    } else {
+      pointForecast = Math.round(Math.max(lastWorkingCount, 0.90 * maxHistoricalWorkingCount));
+    }
   } else {
-    // Día regular: estabilidad operativa real (retención natural)
-    const expectedFromAttended = lastWorkingCount * Math.max(0.98, markov.p_attend_attend);
-    const expectedFromAbsent = lastAbsentCount * Math.min(0.20, markov.p_attend_absent);
-    pointForecast = Math.min(totalUniverse, Math.max(1, Math.round(expectedFromAttended + expectedFromAbsent)));
+    if (sameDayHistoricalAvg > 0) {
+      pointForecast = sameDayHistoricalAvg;
+    } else {
+      pointForecast = Math.round(Math.max(lastWorkingCount, 0.90 * maxHistoricalWorkingCount));
+    }
   }
+
+  pointForecast = Math.min(maxHistoricalWorkingCount, Math.min(totalUniverse, Math.max(1, pointForecast)));
 
   // Standard variance: Var(X) = n*p*(1-p)
   const pRet = Math.min(0.99, Math.max(0.01, pointForecast / totalUniverse));
@@ -825,7 +847,8 @@ export function computeCFCForecasts(
   markov: MarkovTransitionMatrix,
   seasonalityMultiplier: number = 1.0,
   nextDayOfWeekName?: string,
-  isPostPayday?: boolean
+  isPostPayday?: boolean,
+  sensitivityMode: 'STANDARD' | 'DYNAMIC' | 'CAPACITY' = 'DYNAMIC'
 ): CFCForecastItem[] {
   return cfcList
     .map((c) => {
@@ -838,8 +861,7 @@ export function computeCFCForecasts(
       // Base personnel count: Use the last day that had staff to make a realistic projection
       const basePresent = lastDayWithStaff ? lastDayWithStaff.presentCount : c.dailyAverage;
 
-      // Capacidad máxima histórica real de este CFC en los días cargados
-      // Regla inviolable: Una cuadrilla NUNCA puede proyectar más personal del máximo demostrado que jamás tuvo
+      // Capacidad máxima histórica real de este CFC en los días cargados (fecha más alta)
       const maxHistoricalCapacity = daysWithPersonnel.length > 0
         ? Math.max(...daysWithPersonnel.map((h) => h.presentCount))
         : basePresent;
@@ -847,60 +869,70 @@ export function computeCFCForecasts(
       // El universo de la cuadrilla está delimitado por su capacidad máxima demostrada
       const universe = Math.max(basePresent, maxHistoricalCapacity);
 
+      // Verificamos si este CFC ya tiene asistencia registrada para este día específico de la semana (ej. Lunes o Martes)
+      const sameDayHistory = daysWithPersonnel.filter((h) => h.dayName === nextDayOfWeekName);
+      const sameDayAvg = sameDayHistory.length > 0
+        ? Math.round(sameDayHistory.reduce((sum, h) => sum + h.presentCount, 0) / sameDayHistory.length)
+        : 0;
+
       let predicted = basePresent;
 
       if (isPostPayday) {
         // Sábado pos-quincena: contracción por cobro salarial
         predicted = Math.max(1, Math.round(basePresent * 0.88));
-      } else if (nextDayOfWeekName === 'Martes') {
-        // Martes: SUBE (recuperación de colaboradores ausentes el lunes)
-        // Busca si este CFC tiene registros de Martes en su historial cargado
-        const tuesdayDays = daysWithPersonnel.filter((h) => h.dayName === 'Martes');
-        const tuesdayHistoricalAvg = tuesdayDays.length > 0
-          ? Math.round(tuesdayDays.reduce((sum, h) => sum + h.presentCount, 0) / tuesdayDays.length)
-          : 0;
-
-        if (tuesdayHistoricalAvg > 0) {
-          if (tuesdayHistoricalAvg > basePresent) {
-            // Recupera la brecha entre el lunes y el nivel típico de martes de este CFC
-            const gap = tuesdayHistoricalAvg - basePresent;
-            const recoveredGap = Math.max(1, Math.round(gap * 0.85));
-            predicted = basePresent + recoveredGap;
-          } else {
-            // Si el lunes actual ya igualó o superó el martes histórico, mantiene la dotación
-            predicted = basePresent;
-          }
-        } else {
-          // Si no hay martes previo en el archivo, aplica un repunte suave del +2%
-          const moderateBoost = Math.max(1, Math.round(basePresent * 0.02));
-          predicted = basePresent + moderateBoost;
-        }
-
-        // Borde superior estricto: Jamás superar el máximo histórico del CFC
-        predicted = Math.min(maxHistoricalCapacity, Math.max(basePresent, predicted));
-      } else if (nextDayOfWeekName === 'Miércoles') {
-        // Miércoles: SE MANTIENE (estabilidad de cuadrilla respecto al martes)
-        predicted = Math.min(maxHistoricalCapacity, basePresent);
-      } else if (nextDayOfWeekName === 'Jueves') {
-        // Jueves: ENTRE VIENEN Y VAN (rotación y fluctuación leve)
-        const baseline = Math.round(0.92 * basePresent + 0.08 * (c.dailyAverage || basePresent));
-        predicted = Math.min(maxHistoricalCapacity, Math.max(1, baseline));
-      } else if (nextDayOfWeekName === 'Viernes') {
-        // Viernes: COMO QUE BAJA UN POCO
-        predicted = Math.min(maxHistoricalCapacity, Math.max(1, Math.round(basePresent * 0.985)));
-      } else if (nextDayOfWeekName === 'Sábado') {
-        // Sábado: TAMBIÉN BAJA
-        predicted = Math.min(maxHistoricalCapacity, Math.max(1, Math.round(basePresent * 0.95)));
       } else if (nextDayOfWeekName === 'Lunes') {
-        // Lunes: COMO QUE BAJA
-        predicted = Math.min(maxHistoricalCapacity, Math.max(1, Math.round(basePresent * 0.96)));
+        // Lunes: Inicio de semana. Cuadrilla activa recupera hacia su dotación alta demostrada (rango de la fecha más alta)
+        if (sameDayAvg > 0) {
+          predicted = Math.max(sameDayAvg, Math.round(0.92 * maxHistoricalCapacity));
+        } else {
+          predicted = Math.round(Math.max(basePresent, 0.90 * maxHistoricalCapacity, c.dailyAverage || basePresent));
+        }
+      } else if (nextDayOfWeekName === 'Martes') {
+        // Martes: Concurrencia plena. Se ubica en el rango de su capacidad más alta
+        if (sameDayAvg > 0) {
+          predicted = Math.max(sameDayAvg, Math.round(0.95 * maxHistoricalCapacity));
+        } else {
+          const gap = maxHistoricalCapacity - basePresent;
+          predicted = basePresent + Math.round(gap * 0.90);
+        }
+      } else if (nextDayOfWeekName === 'Miércoles') {
+        // Miércoles: Jornada central estable en el rango alto
+        if (sameDayAvg > 0) {
+          predicted = Math.max(sameDayAvg, Math.round(0.93 * maxHistoricalCapacity));
+        } else {
+          predicted = Math.round(Math.max(basePresent, 0.92 * maxHistoricalCapacity, c.dailyAverage || basePresent));
+        }
+      } else if (nextDayOfWeekName === 'Jueves') {
+        // Jueves: Mantiene dotación activa dentro del rango normal
+        if (sameDayAvg > 0) {
+          predicted = sameDayAvg;
+        } else {
+          predicted = Math.round(Math.max(basePresent, 0.90 * maxHistoricalCapacity));
+        }
+      } else if (nextDayOfWeekName === 'Viernes') {
+        // Viernes: Sostiene dotación en el rango activo
+        if (sameDayAvg > 0) {
+          predicted = sameDayAvg;
+        } else {
+          predicted = Math.round(Math.max(basePresent, 0.88 * maxHistoricalCapacity));
+        }
+      } else if (nextDayOfWeekName === 'Sábado') {
+        // Sábado normal (no pos-quincena): según asistencia histórica de sábado o rotación
+        if (sameDayAvg > 0) {
+          predicted = sameDayAvg;
+        } else {
+          predicted = Math.max(1, Math.round(basePresent * 0.95));
+        }
       } else {
-        // Jornadas regulares: Estabilidad operativa real
-        predicted = Math.min(maxHistoricalCapacity, basePresent);
+        if (sameDayAvg > 0) {
+          predicted = sameDayAvg;
+        } else {
+          predicted = basePresent;
+        }
       }
 
-      // GARANTÍA FINAL: Nunca proyectar más que el máximo histórico de este CFC
-      predicted = Math.min(maxHistoricalCapacity, Math.max(0, predicted));
+      // GARANTÍA FINAL: La proyección se mantiene estrictamente dentro del rango de la fecha más alta (máximo histórico)
+      predicted = Math.min(maxHistoricalCapacity, Math.max(1, predicted));
 
       const expectedDelta = predicted - basePresent;
       const expectedRate = universe > 0 ? Number(((predicted / universe) * 100).toFixed(1)) : 100;
@@ -920,7 +952,7 @@ export function computeCFCForecasts(
         history: c.history,
       };
     })
-    .sort((a, b) => a.predictedAttendance - b.predictedAttendance); // Orden por defecto: de menor a mayor
+    .sort((a, b) => a.predictedAttendance - b.predictedAttendance);
 }
 
 /**
