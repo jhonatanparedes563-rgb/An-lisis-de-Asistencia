@@ -197,38 +197,61 @@ export function computeAttendanceMatrix(
 
   const totalUniqueWorkers = workerRegistry.size;
 
-  // 3. Build Daily Evolution Stats discounting DT (Scheduled company rest is NOT absence)
+  // Precompute earliest attended date per week for each worker
+  // Crucial Rule: Workers integrate into harvest day-by-day.
+  // Days prior to their first attended day in a week are NOT marked as absence (falta).
+  // Only workers who came at least one day in the week and subsequently miss a day get marked with falta.
+  const workerFirstDateByWeek = new Map<string, Map<string, string>>();
+  workerRegistry.forEach((val, lookupKey) => {
+    const weekMap = new Map<string, string>();
+    val.attendedDates.forEach((dateStr) => {
+      const wId = getISOWeekInfo(dateStr).id;
+      const currentFirst = weekMap.get(wId);
+      if (!currentFirst || dateStr.localeCompare(currentFirst) < 0) {
+        weekMap.set(wId, dateStr);
+      }
+    });
+    workerFirstDateByWeek.set(lookupKey, weekMap);
+  });
+
+  // 3. Build Daily Evolution Stats discounting DT and evaluating only integrated personnel
   const daysEvolution: DayEvolutionStat[] = sortedBatches.map((batch) => {
     const { formatted, dayName } = formatISODate(batch.date);
     const workersWorkingCount = batch.workersCount;
     const batchWeek = getISOWeekInfo(batch.date).id;
 
-    // Count workers who belong to this week's active workforce
+    // Count workers who belong to this day's active workforce
+    // A worker belongs to today's workforce only from their first attended day in that week onwards
     let activeCohortToday = 0;
     let dtWorkersCount = 0;
     let absentCount = 0;
 
-    workerRegistry.forEach((val) => {
-      // Only evaluate workers active in this specific week's roster
+    workerRegistry.forEach((val, lookupKey) => {
       if (val.activeWeeks.has(batchWeek)) {
-        activeCohortToday++;
-        const attended = val.attendedDates.has(batch.date);
+        const firstDateThisWeek = workerFirstDateByWeek.get(lookupKey)?.get(batchWeek);
+        const isIntegratedToday = firstDateThisWeek && batch.date.localeCompare(firstDateThisWeek) >= 0;
 
-        if (!attended) {
-          // Check if this worker's CFC had DT on this date
-          const workerCfcKey = val.cfc ? val.cfc.trim().toLowerCase() : '';
-          let isDT = false;
-          if (workerCfcKey) {
-            const cfcAttendanceToday = cfcAttendanceByDate.get(`${workerCfcKey}||${batch.date}`) || 0;
-            if (cfcAttendanceToday === 0) {
-              isDT = true;
+        if (isIntegratedToday) {
+          activeCohortToday++;
+          const attended = val.attendedDates.has(batch.date);
+
+          if (!attended) {
+            // Check if this worker's CFC had DT on this date
+            const cfcOnDate = val.cfcByDate.get(batch.date) || val.cfc || '';
+            const workerCfcKey = cfcOnDate.trim().toLowerCase();
+            let isDT = false;
+            if (workerCfcKey) {
+              const cfcAttendanceToday = cfcAttendanceByDate.get(`${workerCfcKey}||${batch.date}`) || 0;
+              if (cfcAttendanceToday === 0) {
+                isDT = true;
+              }
             }
-          }
 
-          if (isDT) {
-            dtWorkersCount++;
-          } else {
-            absentCount++;
+            if (isDT) {
+              dtWorkersCount++;
+            } else {
+              absentCount++;
+            }
           }
         }
       }
@@ -282,8 +305,11 @@ export function computeAttendanceMatrix(
       // CFC en este día específico (o el asignado a su cuadrilla si faltó o descansó)
       const cfcOnDate = val.cfcByDate.get(batch.date) || val.cfc || 'Sin Asignar';
 
-      if (!isWeekActive) {
-        // The worker was NOT part of this week's cohort (rotated out or hired later)
+      const firstDateThisWeek = workerFirstDateByWeek.get(key)?.get(batchWeek);
+      const isIntegratedOnDate = isWeekActive && firstDateThisWeek && batch.date.localeCompare(firstDateThisWeek) >= 0;
+
+      if (!isWeekActive || !isIntegratedOnDate) {
+        // The worker was NOT part of the workforce yet on this date (joined later or inactive week)
         return {
           date: batch.date,
           formattedDate: formatted,

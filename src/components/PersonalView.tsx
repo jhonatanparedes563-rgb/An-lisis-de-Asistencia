@@ -423,7 +423,7 @@ export const PersonalView: React.FC<PersonalViewProps> = ({
                           {h?.isInactive ? (
                             <span
                               className="text-slate-300 font-mono text-[11px]"
-                              title="No pertenecía al personal de esta semana (rotación/baja semanal)"
+                              title="No incorporado aún o no convocado en esta fecha (no cuenta como falta)"
                             >
                               -
                             </span>
