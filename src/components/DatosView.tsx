@@ -55,7 +55,7 @@ export const DatosView: React.FC<DatosViewProps> = ({
           'Fecha': b.formattedDate,
           'Fila': r.originalRowNumber,
           'Trabajador': r.workerName,
-          'DNI': r.dni || '-',
+          'Cód. Empleado': r.dni || '-',
           ...(r.area ? { 'Área': r.area } : {}),
         });
       });
@@ -208,7 +208,7 @@ export const DatosView: React.FC<DatosViewProps> = ({
                   <th className="py-2 px-3">#</th>
                   <th className="py-2 px-3">Trabajador</th>
                   <th className="py-2 px-3">CFC</th>
-                  <th className="py-2 px-3">DNI</th>
+                  <th className="py-2 px-3">Cód. Empleado</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">

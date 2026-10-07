@@ -7,21 +7,27 @@ import {
   RawWorkerRow,
   WorkerAttendanceSummary,
 } from '../types';
-import { extractCfcFromRow } from './excelParser';
+import { extractCfcFromRow, parseDateValue } from './excelParser';
 import { getISOWeekInfo } from './filterUtils';
 
 const DAYS_SPANISH = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
 export function formatISODate(dateStr: string): { formatted: string; dayName: string } {
-  if (!dateStr || !dateStr.includes('-')) {
-    return { formatted: dateStr || 'Sin fecha', dayName: '' };
+  if (!dateStr) {
+    return { formatted: 'Sin fecha', dayName: '' };
   }
-  const parts = dateStr.split('-');
-  if (parts.length === 3) {
-    const formatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
-    const dObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-    const dayName = !isNaN(dObj.getTime()) ? DAYS_SPANISH[dObj.getDay()] : '';
-    return { formatted, dayName };
+  const iso = parseDateValue(dateStr);
+  if (iso && iso.includes('-')) {
+    const parts = iso.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0]);
+      const month = parseInt(parts[1]) - 1;
+      const day = parseInt(parts[2]);
+      const formatted = `${String(day).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}/${year}`;
+      const dObj = new Date(year, month, day);
+      const dayName = !isNaN(dObj.getTime()) ? DAYS_SPANISH[dObj.getDay()] : '';
+      return { formatted, dayName };
+    }
   }
   return { formatted: dateStr, dayName: '' };
 }
@@ -35,8 +41,18 @@ export function computeAttendanceMatrix(
   kpis: MatrixKPIs;
   workersMap: Map<string, WorkerAttendanceSummary>;
 } {
-  // Sort batches chronologically
-  const sortedBatches = [...batches].sort((a, b) => a.date.localeCompare(b.date));
+  // Normalize batch dates and sort chronologically
+  const normalizedBatches = batches.map((b) => {
+    const isoDate = parseDateValue(b.date) || b.date;
+    const { formatted, dayName } = formatISODate(isoDate);
+    return {
+      ...b,
+      date: isoDate,
+      formattedDate: formatted,
+      dayName,
+    };
+  });
+  const sortedBatches = normalizedBatches.sort((a, b) => a.date.localeCompare(b.date));
   const totalDaysLoaded = sortedBatches.length;
 
   if (totalDaysLoaded === 0) {
@@ -61,25 +77,35 @@ export function computeAttendanceMatrix(
   // 1. Build lookup for CFC strictly from rawRowsByDate and count attendance per CFC per date
   const rawWorkerMapByDate = new Map<string, string>(); // `${lookupKey}||${date}` -> cfcVal
   const workerCfcLookup = new Map<string, string>();
+  const workerCodeLookup = new Map<string, string>(); // nameKey or keyId -> employee code
   const cfcAttendanceByDate = new Map<string, number>();
 
   if (rawRowsByDate) {
     Object.entries(rawRowsByDate).forEach(([date, rows]) => {
       rows.forEach((r) => {
+        const trimmedCode = r.dni ? r.dni.trim() : '';
+        const trimmedName = r.workerName ? r.workerName.trim().toLowerCase() : '';
+
+        if (trimmedCode) {
+          workerCodeLookup.set(trimmedCode.toLowerCase(), trimmedCode);
+          if (trimmedName) {
+            workerCodeLookup.set(trimmedName, trimmedCode);
+          }
+        }
+
         // Strict: extract directly from the original row's CFC column
         const extracted = extractCfcFromRow(r.rawRow);
         const cfcVal = extracted !== 'CFC General' ? extracted : (r.cfc || undefined);
         if (cfcVal && cfcVal !== 'CFC General') {
           const trimmedCfc = cfcVal.trim();
-          if (r.dni) {
-            const dniKey = r.dni.trim().toLowerCase();
+          if (trimmedCode) {
+            const dniKey = trimmedCode.toLowerCase();
             workerCfcLookup.set(dniKey, trimmedCfc);
             rawWorkerMapByDate.set(`${dniKey}||${date}`, trimmedCfc);
           }
-          if (r.workerName) {
-            const nameKey = r.workerName.trim().toLowerCase();
-            workerCfcLookup.set(nameKey, trimmedCfc);
-            rawWorkerMapByDate.set(`${nameKey}||${date}`, trimmedCfc);
+          if (trimmedName) {
+            workerCfcLookup.set(trimmedName, trimmedCfc);
+            rawWorkerMapByDate.set(`${trimmedName}||${date}`, trimmedCfc);
           }
 
           const cfcKey = `${trimmedCfc.toLowerCase()}||${date}`;
@@ -131,10 +157,16 @@ export function computeAttendanceMatrix(
         resolvedCfc = workerCfcLookup.get(name.trim().toLowerCase());
       }
 
+      const resolvedCode =
+        workerCodeLookup.get(lookupKey) ||
+        (name && workerCodeLookup.get(name.trim().toLowerCase())) ||
+        (keyId && keyId.toLowerCase() !== name.trim().toLowerCase() ? keyId : '') ||
+        '';
+
       if (!workerRegistry.has(lookupKey)) {
         workerRegistry.set(lookupKey, {
           name: name || keyId,
-          dni: keyId && /^\d+$/.test(keyId) ? keyId : '',
+          dni: resolvedCode,
           area: area || undefined,
           cfc: resolvedCfc || undefined,
           attendedDates: new Set(),
@@ -143,6 +175,9 @@ export function computeAttendanceMatrix(
         });
       } else {
         const existing = workerRegistry.get(lookupKey)!;
+        if (!existing.dni && resolvedCode) {
+          existing.dni = resolvedCode;
+        }
         if (!existing.cfc && resolvedCfc) {
           existing.cfc = resolvedCfc;
         }

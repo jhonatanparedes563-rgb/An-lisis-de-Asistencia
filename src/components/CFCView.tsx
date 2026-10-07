@@ -639,7 +639,7 @@ export const CFCView: React.FC<CFCViewProps> = ({
                 <thead className="bg-[#E0F2FE] text-[#0369A1] font-semibold text-[11px] sticky top-0 z-10">
                   <tr>
                     <th className="py-2 px-3">Trabajador</th>
-                    <th className="py-2 px-2">DNI</th>
+                    <th className="py-2 px-2">Cód. Empleado</th>
                     <th className="py-2 px-2 text-right">Asistió</th>
                     <th className="py-2 px-2 text-right">Faltó</th>
                     <th className="py-2 px-2 text-right">%</th>

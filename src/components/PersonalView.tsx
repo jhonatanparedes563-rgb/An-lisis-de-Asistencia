@@ -114,7 +114,7 @@ export const PersonalView: React.FC<PersonalViewProps> = ({
       const rowObj: Record<string, any> = {
         '#': i + 1,
         'Trabajador': w.name,
-        'DNI': w.dni || '-',
+        'Cód. Empleado': w.dni || '-',
         'CFC': w.cfc || w.area || '-',
         'Asistió': w.attendedDaysCount,
         'Faltó': w.absentDaysCount,
@@ -180,7 +180,7 @@ export const PersonalView: React.FC<PersonalViewProps> = ({
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar nombre o DNI..."
+              placeholder="Buscar nombre o código..."
               className="w-full bg-slate-50 border border-slate-200 rounded-md pl-8 pr-3 py-1 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:border-emerald-500"
             />
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -310,7 +310,9 @@ export const PersonalView: React.FC<PersonalViewProps> = ({
                     </span>
                   </div>
                 </th>
-                <th className="py-2.5 px-2.5 min-w-[90px]">DNI</th>
+                <th className="py-2.5 px-2.5 min-w-[95px]" title="Código de Empleado">
+                  Cód. Empleado
+                </th>
                 <th
                   onClick={() => handleSort('attended')}
                   className="py-2.5 px-2.5 text-right font-bold cursor-pointer hover:bg-sky-100 transition min-w-[75px]"

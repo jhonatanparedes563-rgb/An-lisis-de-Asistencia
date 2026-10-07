@@ -10,7 +10,7 @@ import {
   PlusCircle,
 } from 'lucide-react';
 import { DayAttendanceBatch, RawWorkerRow } from '../types';
-import { parseExcelTareoFile } from '../utils/excelParser';
+import { parseExcelTareoFile, parseDateValue } from '../utils/excelParser';
 import { formatISODate } from '../utils/matrixAnalytics';
 
 interface CargarExcelModalProps {
@@ -58,9 +58,16 @@ export const CargarExcelModal: React.FC<CargarExcelModalProps> = ({
     try {
       const parsed = await parseExcelTareoFile(file, selectedDate);
       const batches: DayAttendanceBatch[] = [];
+      const normalizedRowsByDate: Record<string, RawWorkerRow[]> = {};
       let totalCount = 0;
 
-      for (const [dateStr, rows] of Object.entries(parsed.rowsByDate)) {
+      for (const [rawDateStr, rows] of Object.entries(parsed.rowsByDate)) {
+        const dateStr = parseDateValue(rawDateStr) || rawDateStr;
+        normalizedRowsByDate[dateStr] = rows.map((r) => ({
+          ...r,
+          date: parseDateValue(r.date) || dateStr,
+        }));
+
         // Collect distinct workers for this date (1 worker = 1 count)
         const workerKeysSet = new Set<string>();
 
@@ -87,7 +94,7 @@ export const CargarExcelModal: React.FC<CargarExcelModalProps> = ({
 
       setProcessedResult({
         batches,
-        rawRowsByDate: parsed.rowsByDate,
+        rawRowsByDate: normalizedRowsByDate,
         totalWorkers: totalCount,
         fileName: file.name,
       });

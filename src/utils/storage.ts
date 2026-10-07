@@ -1,4 +1,6 @@
 import { DayAttendanceBatch, RawWorkerRow } from '../types';
+import { parseDateValue } from './excelParser';
+import { formatISODate } from './matrixAnalytics';
 
 const DB_NAME = 'AttendanceTareoMatrixDB';
 const DB_VERSION = 3;
@@ -89,8 +91,48 @@ export async function loadBatchesFromStorage(): Promise<{
       req.onerror = () => resolve({});
     });
 
-    const [batches, rawRowsByDate] = await Promise.all([batchesPromise, rowsPromise]);
-    return { batches, rawRowsByDate };
+    const [rawBatches, rawRowsResult] = await Promise.all([batchesPromise, rowsPromise]);
+
+    // Normalize and clean up any legacy/malformed dates (e.g. 10/6/26 -> 2026-10-06)
+    let needsMigration = false;
+    const cleanBatchesMap = new Map<string, DayAttendanceBatch>();
+    const cleanRawRowsMap: Record<string, RawWorkerRow[]> = {};
+
+    rawBatches.forEach((b) => {
+      const normalizedDate = parseDateValue(b.date) || b.date;
+      if (normalizedDate !== b.date) {
+        needsMigration = true;
+      }
+      const { formatted, dayName } = formatISODate(normalizedDate);
+      cleanBatchesMap.set(normalizedDate, {
+        ...b,
+        date: normalizedDate,
+        formattedDate: formatted,
+        dayName,
+      });
+    });
+
+    Object.entries(rawRowsResult).forEach(([d, rows]) => {
+      const normalizedDate = parseDateValue(d) || d;
+      if (normalizedDate !== d) {
+        needsMigration = true;
+      }
+      const cleanRows = rows.map((r) => ({
+        ...r,
+        date: parseDateValue(r.date) || normalizedDate,
+      }));
+      cleanRawRowsMap[normalizedDate] = cleanRows;
+    });
+
+    const finalBatches = Array.from(cleanBatchesMap.values()).sort((a, b) =>
+      a.date.localeCompare(b.date)
+    );
+
+    if (needsMigration) {
+      saveBatchesToStorage(finalBatches, cleanRawRowsMap);
+    }
+
+    return { batches: finalBatches, rawRowsByDate: cleanRawRowsMap };
   } catch (err) {
     console.error('Error loading batches:', err);
     return { batches: [], rawRowsByDate: {} };

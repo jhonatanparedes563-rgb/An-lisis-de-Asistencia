@@ -193,7 +193,7 @@ export const ResumenView: React.FC<ResumenViewProps> = ({
                 <tr>
                   <th className="py-2 px-3">Trabajador</th>
                   <th className="py-2 px-2">CFC</th>
-                  <th className="py-2 px-2">DNI</th>
+                  <th className="py-2 px-2">Cód. Empleado</th>
                   <th className="py-2 px-2 text-right">Asistió</th>
                   <th className="py-2 px-2 text-right">Faltas</th>
                   <th className="py-2 px-2 text-right">%</th>

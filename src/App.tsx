@@ -8,7 +8,9 @@ import {
 import {
   computeAttendanceMatrix,
   computeCFCAttendanceMatrix,
+  formatISODate,
 } from './utils/matrixAnalytics';
+import { parseDateValue } from './utils/excelParser';
 import {
   clearAllBatches,
   loadBatchesFromStorage,
@@ -213,20 +215,52 @@ export function App() {
     newRawRows: Record<string, RawWorkerRow[]>,
     mode: 'append' | 'replace'
   ) => {
+    const normalizeBatchList = (list: DayAttendanceBatch[]) => {
+      const map = new Map<string, DayAttendanceBatch>();
+      list.forEach((b) => {
+        const iso = parseDateValue(b.date) || b.date;
+        const { formatted, dayName } = formatISODate(iso);
+        map.set(iso, {
+          ...b,
+          date: iso,
+          formattedDate: formatted,
+          dayName,
+        });
+      });
+      return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
+    };
+
+    const normalizeRawRows = (rowsMap: Record<string, RawWorkerRow[]>) => {
+      const result: Record<string, RawWorkerRow[]> = {};
+      Object.entries(rowsMap).forEach(([d, rows]) => {
+        const iso = parseDateValue(d) || d;
+        result[iso] = rows.map((r) => ({
+          ...r,
+          date: parseDateValue(r.date) || iso,
+        }));
+      });
+      return result;
+    };
+
     let updatedBatches: DayAttendanceBatch[] = [];
     let updatedRawRows: Record<string, RawWorkerRow[]> = {};
 
+    const cleanNewBatches = normalizeBatchList(newBatches);
+    const cleanNewRows = normalizeRawRows(newRawRows);
+
     if (mode === 'append') {
-      // Merge: replace any batch with matching date, append new ones
+      const cleanCurrentBatches = normalizeBatchList(batches);
+      const cleanCurrentRows = normalizeRawRows(rawRowsByDate);
+
       const map = new Map<string, DayAttendanceBatch>();
-      batches.forEach((b) => map.set(b.date, b));
-      newBatches.forEach((b) => map.set(b.date, b));
+      cleanCurrentBatches.forEach((b) => map.set(b.date, b));
+      cleanNewBatches.forEach((b) => map.set(b.date, b));
       updatedBatches = Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
 
-      updatedRawRows = { ...rawRowsByDate, ...newRawRows };
+      updatedRawRows = { ...cleanCurrentRows, ...cleanNewRows };
     } else {
-      updatedBatches = [...newBatches].sort((a, b) => a.date.localeCompare(b.date));
-      updatedRawRows = newRawRows;
+      updatedBatches = cleanNewBatches;
+      updatedRawRows = cleanNewRows;
     }
 
     setBatches(updatedBatches);
@@ -262,7 +296,7 @@ export function App() {
       const rowObj: Record<string, any> = {
         '#': i + 1,
         'Persona / Trabajador': w.name,
-        'DNI / Código': w.dni || '-',
+        'Cód. Empleado': w.dni || '-',
         'CFC': w.cfc || w.area || '-',
         'Días que Asistió': w.attendedDaysCount,
         'Días que Faltó': w.absentDaysCount,

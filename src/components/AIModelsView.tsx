@@ -181,7 +181,7 @@ export const AIModelsView: React.FC<AIModelsViewProps> = ({
     const data = filteredPredictions.map((p, i) => ({
       '#': i + 1,
       'Trabajador': p.name,
-      'DNI': p.dni || '-',
+      'Cód. Empleado': p.dni || '-',
       'CFC': p.cfc || '-',
       'Score (%)': p.riskScore,
       'Nivel': p.riskLevel,
@@ -1006,7 +1006,7 @@ Estructura:
                 type="text"
                 value={searchRisk}
                 onChange={(e) => setSearchRisk(e.target.value)}
-                placeholder="Buscar trabajador o DNI..."
+                placeholder="Buscar trabajador o código..."
                 className="w-full bg-slate-50 border border-slate-200 rounded-md pl-7 pr-3 py-1 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:border-emerald-500"
               />
               <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -1062,7 +1062,7 @@ Estructura:
               <thead className="bg-[#E0F2FE] text-[#0369A1] font-semibold text-[11px] sticky top-0 z-10 shadow-2xs">
                 <tr>
                   <th className="py-2 px-3">Trabajador</th>
-                  <th className="py-2 px-2">DNI</th>
+                  <th className="py-2 px-2">Cód. Empleado</th>
                   <th className="py-2 px-2">CFC</th>
                   <th className="py-2 px-2 text-right">Score</th>
                   <th className="py-2 px-2 text-center">Nivel</th>

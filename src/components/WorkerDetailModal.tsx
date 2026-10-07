@@ -32,7 +32,7 @@ export const WorkerDetailModal: React.FC<WorkerDetailModalProps> = ({ worker, on
               <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-1">
                 {worker.dni && (
                   <span>
-                    DNI: <strong className="font-mono text-slate-700">{worker.dni}</strong>
+                    Cód. Empleado: <strong className="font-mono text-slate-700">{worker.dni}</strong>
                   </span>
                 )}
                 <span>•</span>
@@ -133,25 +133,15 @@ export const WorkerDetailModal: React.FC<WorkerDetailModalProps> = ({ worker, on
                     <td className="py-2.5 px-3 text-center font-mono font-medium text-slate-700">
                       {h.cfc || worker.cfc || 'Sin Asignar'}
                     </td>
-                    <td className="py-2.5 px-3.5 text-center">
+                    <td className="py-2.5 px-3.5 text-center font-medium">
                       {h.isInactive ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 bg-slate-50 px-2.5 py-0.5 rounded-full border border-slate-200">
-                          <span>⚪ No programado esta semana</span>
-                        </span>
+                        <span className="text-slate-400 font-mono text-xs">-</span>
                       ) : h.isDT ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-sky-700 bg-sky-50 px-2.5 py-0.5 rounded-full border border-sky-200">
-                          <span>🔵 DT (Descanso)</span>
-                        </span>
+                        <span className="text-sky-700 font-bold text-xs">DT</span>
                       ) : h.attended ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>✅ Asistió</span>
-                        </span>
+                        <span className="text-emerald-700 font-semibold text-xs">Asistió</span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200">
-                          <XCircle className="w-3.5 h-3.5 text-rose-500" />
-                          <span>❌ Faltó</span>
-                        </span>
+                        <span className="text-rose-600 font-semibold text-xs">Faltó</span>
                       )}
                     </td>
                   </tr>
